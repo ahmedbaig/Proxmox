@@ -12,12 +12,16 @@ db_postgres_roles:
   - { name: hive, password_var: db_postgres_hive_password }
   - { name: speedtest, password_var: db_postgres_speedtest_password }
   - { name: exporter, password_var: db_postgres_exporter_password, member_of: pg_monitor }
+  - { name: memory, password_var: memory_db_password }
+  - { name: geo, password_var: geo_db_password }
 
 db_postgres_databases:
   - { name: hive, owner: hive }
   - { name: speedtest, owner: speedtest }
   - { name: wiki, owner: postgres }
   - { name: yamtrack, owner: postgres }
+  - { name: memory, owner: memory, extensions: [vector, pg_trgm] }
+  - { name: geo, owner: geo, extensions: [postgis, postgis_raster, pg_trgm, btree_gist] }
 
 db_mariadb_users:
   - { user: ahmed, host: "10.10.%", password_var: db_mariadb_admin_password, grant: "ALL PRIVILEGES ON *.*", grant_option: true }
@@ -36,6 +40,10 @@ db_cert_members: [postgres, mysql, mongod, redis, couchdb]
 db_packages:
   - postgresql
   - "postgresql-{{ db_pg_version }}"
+  - "postgresql-{{ db_pg_version }}-pgvector"
+  - "postgresql-{{ db_pg_version }}-postgis-3"
+  - "postgresql-{{ db_pg_version }}-postgis-3-scripts"
+  - python3-venv
   - mariadb-server
   - mariadb-client
   - percona-server-mongodb

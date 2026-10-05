@@ -1,0 +1,40 @@
+x-pg: &pg
+  PGHOST: "{{ geo_db_host }}"
+  PGPORT: "5432"
+  PGDATABASE: "{{ geo_db_name }}"
+  PGUSER: "{{ geo_db_user }}"
+  PGPASSWORD: "{{ geo_db_password }}"
+
+services:
+  stac:
+    image: ghcr.io/stac-utils/stac-fastapi-pgstac@sha256:8b026c47cc1b19a8955ab6c1cb8197d9c7b85f5cc17a711851fe61540786d23b
+    restart: unless-stopped
+    environment:
+      <<: *pg
+      ENABLE_TRANSACTIONS_EXTENSIONS: "true"
+      DB_MAX_CONN_SIZE: "4"
+    ports:
+      - "8090:8080"
+
+  titiler:
+    image: ghcr.io/stac-utils/titiler-pgstac@sha256:df87bb564cabbc712f1bac30680358770ec9209e366fcf7b0de26b3db81ce637
+    restart: unless-stopped
+    environment:
+      <<: *pg
+      PORT: "80"
+      WEB_CONCURRENCY: "2"
+      DB_MAX_CONN_SIZE: "4"
+    volumes:
+      - {{ apps_data_dir }}/geo:/data:ro
+    ports:
+      - "8091:80"
+
+  martin:
+    image: ghcr.io/maplibre/martin@sha256:59902019bf9038926ff0c71174237d6852e64c457830a6349abe7090be8818ca
+    restart: unless-stopped
+    command:
+      - --listen-addresses=0.0.0.0:3000
+      - --pool-size=4
+      - "postgres://{{ geo_db_user }}:{{ geo_db_password | urlencode }}@{{ geo_db_host }}:5432/{{ geo_db_name }}"
+    ports:
+      - "8092:3000"

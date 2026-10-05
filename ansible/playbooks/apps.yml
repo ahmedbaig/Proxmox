@@ -5,6 +5,10 @@
       community.sops.load_vars:
         file: "{{ secrets_dir }}/ansible/apps.sops.yaml"
       no_log: true
+    - name: Load geo database secrets
+      community.sops.load_vars:
+        file: "{{ secrets_dir }}/geo/postgres.sops.yaml"
+      no_log: true
   roles:
     - common
     - apps

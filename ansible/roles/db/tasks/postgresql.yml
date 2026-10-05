@@ -69,3 +69,11 @@
   loop_control:
     label: "{{ item.name }}"
   when: item.name not in db_pg_databases.stdout_lines
+
+- name: PostgreSQL extensions
+  ansible.builtin.command: runuser -u postgres -- psql -v ON_ERROR_STOP=1 -d {{ item.0.name }} -c "CREATE EXTENSION IF NOT EXISTS {{ item.1 }}"
+  loop: "{{ db_postgres_databases | selectattr('extensions', 'defined') | subelements('extensions') }}"
+  loop_control:
+    label: "{{ item.0.name }}: {{ item.1 }}"
+  register: db_pg_extensions
+  changed_when: "'already exists' not in db_pg_extensions.stderr"

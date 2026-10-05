@@ -5,6 +5,11 @@
       community.sops.load_vars:
         file: "{{ secrets_dir }}/ansible/db.sops.yaml"
       no_log: true
+    - name: Load memory and geo database secrets
+      community.sops.load_vars:
+        file: "{{ secrets_dir }}/{{ item }}/postgres.sops.yaml"
+      loop: [memory, geo]
+      no_log: true
   roles:
     - common
     - db

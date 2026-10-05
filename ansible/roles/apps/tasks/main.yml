@@ -78,4 +78,4 @@
   loop: "{{ apps_compose_files.results }}"
   loop_control:
     label: "{{ item.item.name }}"
-  when: item is changed
+  when: item is changed and not ansible_check_mode
