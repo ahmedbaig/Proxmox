@@ -1,0 +1,6 @@
+- name: Grafana (CT 115)
+  hosts: grafana
+  roles:
+    - common
+    - grafana
+    - alloy

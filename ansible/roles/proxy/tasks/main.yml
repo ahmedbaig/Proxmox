@@ -1,0 +1,91 @@
+- name: Refuse to drop the private vhosts by accident
+  ansible.builtin.assert:
+    that: proxy_private_vhosts is defined or proxy_allow_without_private_vhosts
+    fail_msg: proxy_private_vhosts comes from homelab-secrets/ansible/proxy-private.sops.yaml; without it baig.conf would lose those server blocks
+
+- name: Install packages
+  ansible.builtin.apt:
+    name: "{{ proxy_packages }}"
+    state: present
+
+- name: Configure nginx
+  ansible.builtin.copy:
+    src: nginx.conf
+    dest: /etc/nginx/nginx.conf
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Keep the Proxmox vhost available but disabled
+  ansible.builtin.copy:
+    src: pve.conf
+    dest: /etc/nginx/sites-available/pve.conf
+    mode: "0644"
+
+- name: Disable the default site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Configure the reverse proxy
+  ansible.builtin.template:
+    src: baig.conf.j2
+    dest: /etc/nginx/conf.d/baig.conf
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Run nginx
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: Create the service register web root
+  ansible.builtin.file:
+    path: /var/www/hosts
+    state: directory
+    mode: "0755"
+
+- name: Publish the service register
+  ansible.builtin.copy:
+    content: "{{ lookup('community.sops.sops', proxy_index_secret, input_type='binary', output_type='binary', rstrip=false) }}"
+    dest: /var/www/hosts/index.html
+    mode: "0644"
+  when: proxy_index_secret is file
+  no_log: true
+  diff: false
+
+- name: Check for acme.sh
+  ansible.builtin.stat:
+    path: "{{ proxy_acme_home }}/acme.sh"
+  register: proxy_acme_bin
+
+- name: Point out a missing acme.sh
+  ansible.builtin.debug:
+    msg: acme.sh is not installed; see docs/runbooks.md in the proxmox repo to install it and issue the wildcard certificate
+  when: not proxy_acme_bin.stat.exists
+
+- name: Restore the acme.sh account (Cloudflare token)
+  ansible.builtin.copy:
+    content: "{{ lookup('community.sops.sops', proxy_acme_account_secret, input_type='binary', output_type='binary', rstrip=false) }}"
+    dest: "{{ proxy_acme_home }}/account.conf"
+    mode: "0600"
+  when: proxy_acme_bin.stat.exists and proxy_acme_account_secret is file
+  no_log: true
+  diff: false
+
+- name: Install the Cloudflare DDNS job
+  ansible.builtin.copy:
+    src: cf-ddns.py
+    dest: /root/cf-ddns.py
+    mode: "0755"
+
+- name: Schedule certificate renewal and DDNS
+  ansible.builtin.lineinfile:
+    path: /var/spool/cron/crontabs/root
+    line: "{{ item }}"
+    create: true
+    owner: root
+    group: crontab
+    mode: "0600"
+  loop: "{{ proxy_cron_jobs }}"

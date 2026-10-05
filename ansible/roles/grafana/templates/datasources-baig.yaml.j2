@@ -1,0 +1,15 @@
+apiVersion: 1
+datasources:
+  - name: prometheus
+    uid: fen19il3pklq8c
+    type: prometheus
+    access: proxy
+    url: {{ grafana_prometheus_url }}
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+  - name: loki
+    uid: aen18i6tw61a8a
+    type: loki
+    access: proxy
+    url: {{ grafana_loki_url }}

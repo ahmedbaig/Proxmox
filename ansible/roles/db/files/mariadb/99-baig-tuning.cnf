@@ -1,0 +1,15 @@
+# /etc/mysql/mariadb.conf.d/99-baig-tuning.cnf
+# CT 112 (db, 10.10.20.4). The largest databases are a few GB,
+# so the 128 MB default buffer pool would thrash on any real query.
+
+[mysqld]
+bind-address = 0.0.0.0
+max_connections = 150
+
+innodb_buffer_pool_size = 1500M
+innodb_log_file_size = 256M
+innodb_flush_method = O_DIRECT
+innodb_flush_log_at_trx_commit = 1
+
+slow_query_log = 1
+long_query_time = 1

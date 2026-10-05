@@ -1,0 +1,82 @@
+- name: Install Unbound
+  ansible.builtin.apt:
+    name: unbound
+    state: present
+
+- name: Configure Unbound
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/unbound/unbound.conf.d/{{ item }}"
+    mode: "0644"
+  loop: "{{ dns_unbound_confs }}"
+  notify: Restart Unbound
+
+- name: Run Unbound
+  ansible.builtin.service:
+    name: unbound
+    state: started
+    enabled: true
+
+- name: Check for AdGuard Home
+  ansible.builtin.stat:
+    path: "{{ dns_adguard_dir }}/AdGuardHome"
+  register: dns_adguard_bin
+
+- name: Install AdGuard Home
+  ansible.builtin.unarchive:
+    src: "{{ dns_adguard_url }}"
+    dest: "{{ dns_adguard_dir | dirname }}"
+    remote_src: true
+  when: not dns_adguard_bin.stat.exists
+
+- name: Install AdGuard Home unit
+  ansible.builtin.copy:
+    src: AdGuardHome.service
+    dest: /etc/systemd/system/AdGuardHome.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart AdGuard Home
+
+- name: Run AdGuard Home
+  ansible.builtin.service:
+    name: AdGuardHome
+    state: started
+    enabled: true
+
+- name: Install metric collectors
+  ansible.builtin.copy:
+    src: "{{ item }}.py"
+    dest: "/usr/local/bin/{{ item }}.py"
+    mode: "0755"
+  loop: "{{ dns_metric_jobs }}"
+
+- name: Install metric units
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+  loop: "{{ dns_metric_jobs | product(['service', 'timer']) | map('join', '.') | list }}"
+  notify: Reload systemd
+
+- name: Write AdGuard credentials for dns-flow-metrics
+  ansible.builtin.template:
+    src: dns-flow-metrics.env.j2
+    dest: /etc/default/dns-flow-metrics
+    mode: "0600"
+  when: dns_flow_metrics_adguard_auth is defined
+  no_log: true
+  diff: false
+
+- name: Ensure textfile collector directory
+  ansible.builtin.file:
+    path: "{{ dns_textfile_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Run metric timers
+  ansible.builtin.systemd_service:
+    name: "{{ item }}.timer"
+    state: started
+    enabled: true
+  loop: "{{ dns_metric_jobs }}"

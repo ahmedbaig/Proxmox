@@ -1,0 +1,53 @@
+# /etc/prometheus/blackbox.yml  —  CT 114 (metrics, 10.10.20.5)
+
+modules:
+  # The lab's own services are behind the wildcard cert and several require
+  # authentication — CouchDB returns 401 to an unauthenticated probe by design,
+  # and Grafana/Portainer redirect to a login page. Treating those as failures
+  # would make the board permanently red, so 2xx, 3xx and 401 all count as up.
+  http_2xx_or_auth:
+    prober: http
+    timeout: 10s
+    http:
+      valid_status_codes: [200, 201, 204, 301, 302, 303, 307, 308, 401, 403]
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      method: GET
+      follow_redirects: false
+      preferred_ip_protocol: ip4
+      ip_protocol_fallback: false
+      # The wildcard is a real Let's Encrypt certificate, so verification stays
+      # on. probe_ssl_earliest_cert_expiry is only meaningful when the chain is
+      # actually validated — skipping verification would silently defeat the
+      # certificate expiry alerting this feeds.
+      tls_config:
+        insecure_skip_verify: false
+
+  # Host-level names (netgear.main.baig.network and friends) are HTTP only and
+  # are not covered by the wildcard — see docs/03-proxy-and-certs.md.
+  http_2xx_plain:
+    prober: http
+    timeout: 10s
+    http:
+      valid_status_codes: [200, 301, 302, 401]
+      method: GET
+      follow_redirects: false
+      preferred_ip_protocol: ip4
+      ip_protocol_fallback: false
+
+  icmp:
+    prober: icmp
+    timeout: 5s
+    icmp:
+      preferred_ip_protocol: ip4
+
+  # The Infrastructure Overview dashboard expects a blackbox-tcp job. The
+  # database engines speak their own wire protocols, so a plain TCP connect is
+  # the only meaningful external check for them — it confirms the listener is
+  # accepting connections without needing credentials for five different
+  # engines.
+  tcp_connect:
+    prober: tcp
+    timeout: 6s
+    tcp:
+      preferred_ip_protocol: ip4
+      ip_protocol_fallback: false

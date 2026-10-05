@@ -1,0 +1,30 @@
+# Lab image registry (CT 119). Images pushed by the lab GitLab runners on CT 117.
+# TLS: the lab wildcard certificate, pushed here by /root/distribute-certs.sh on pve.
+version: 0.1
+log:
+  level: info
+  fields:
+    service: registry
+storage:
+  filesystem:
+    rootdirectory: {{ registry_storage }}
+  delete:
+    enabled: true
+  cache:
+    blobdescriptor: inmemory
+http:
+  addr: :{{ registry_port }}
+  tls:
+    certificate: {{ registry_tls_dir }}/{{ registry_cert_name }}.crt
+    key: {{ registry_tls_dir }}/{{ registry_cert_name }}.key
+  headers:
+    X-Content-Type-Options: [nosniff]
+auth:
+  htpasswd:
+    realm: {{ registry_realm }}
+    path: /etc/docker/registry/htpasswd
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 3

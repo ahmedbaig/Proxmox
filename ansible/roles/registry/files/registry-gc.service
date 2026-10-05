@@ -1,0 +1,7 @@
+[Unit]
+Description=Garbage-collect untagged layers in the lab registry
+[Service]
+Type=oneshot
+ExecStartPre=/bin/systemctl stop docker-registry
+ExecStart=/usr/bin/docker-registry garbage-collect --delete-untagged /etc/docker/registry/config.yml
+ExecStopPost=/bin/systemctl start docker-registry

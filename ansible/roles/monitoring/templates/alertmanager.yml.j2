@@ -1,0 +1,53 @@
+# /etc/prometheus/alertmanager.yml  —  CT 114 (metrics, 10.10.20.5)
+#
+# Certificate expiry and service-health rules fire in Prometheus; Alertmanager
+# turns them into notifications. Telegram is primary; webhook-tester is kept as
+# a secondary so alerts stay visible in a browser if delivery fails.
+
+global:
+  resolve_timeout: 5m
+
+templates: []
+
+route:
+  receiver: telegram
+  group_by: ['alertname', 'instance']
+  group_wait: 30s
+  group_interval: 5m
+  # Certificates expire on a scale of weeks. A warning that repeats every four
+  # hours is one you learn to ignore.
+  repeat_interval: 24h
+
+  routes:
+    - matchers:
+        - severity = "critical"
+      receiver: telegram
+      repeat_interval: 4h
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - bot_token: {{ monitoring_telegram_bot_token }}
+        chat_id: {{ monitoring_telegram_chat_id }}
+        parse_mode: HTML
+        send_resolved: true
+        message: |{% raw %}
+          {{ if eq .Status "firing" }}⚠️ <b>{{ .CommonLabels.severity | toUpper }}</b>{{ else }}✅ <b>RESOLVED</b>{{ end }}
+          {{ range .Alerts }}
+          <b>{{ .Labels.alertname }}</b>
+          {{ .Annotations.summary }}
+          {{ if .Annotations.description }}{{ .Annotations.description }}{{ end }}
+          {{ end }}
+{% endraw %}
+    webhook_configs:
+      - url: http://10.10.20.6:8083/
+        send_resolved: true
+
+inhibit_rules:
+  # If a host is entirely unreachable, its individual probe failures add
+  # nothing — keep the one alert that matters.
+  - source_matchers:
+      - alertname = "ExporterDown"
+    target_matchers:
+      - alertname = "ServiceDown"
+    equal: ['instance']

@@ -1,0 +1,40 @@
+monitoring_packages:
+  - prometheus
+  - prometheus-alertmanager
+  - prometheus-blackbox-exporter
+  - loki
+
+monitoring_rule_files:
+  - {name: certs.yml, owner: prometheus}
+  - {name: dns-flow.yml, owner: root}
+
+monitoring_blackbox_http_targets:
+  - https://pve.baig.network
+  - https://router.baig.network
+  - https://netgear.main.baig.network
+  - https://oracle.baig.network
+  - https://dns1.baig.network
+  - https://obsidian.baig.network
+  - https://yamtrack.baig.network
+  - https://webhook.baig.network
+  - https://mailcatcher.baig.network
+  - https://grafana.baig.network
+  - https://prometheus.baig.network
+  - https://loki.baig.network/ready
+  - https://alertmanager.baig.network
+  - https://home.baig.network
+  - https://glances.baig.network
+  - https://dozzle.baig.network
+  - https://plex.baig.network
+  - https://stremio.baig.network
+  - https://transmission.baig.network
+  - https://registry.baig.network
+  - https://gitlab.baig.network
+  - https://registry-ui.baig.network
+
+monitoring_private_blackbox_http_targets: []
+monitoring_private_scrape_configs: ""
+
+monitoring_telegram_bot_token: ""
+monitoring_telegram_chat_id: ""
+monitoring_exporter_down_selector: ""

@@ -1,0 +1,129 @@
+- name: Install packages
+  ansible.builtin.apt:
+    name:
+      - docker-registry
+      - docker.io
+    state: present
+
+- name: Registry configuration
+  ansible.builtin.template:
+    src: config.yml.j2
+    dest: /etc/docker/registry/config.yml
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart registry
+
+- name: Registry users
+  ansible.builtin.copy:
+    content: "{{ registry_htpasswd }}"
+    dest: /etc/docker/registry/htpasswd
+    owner: root
+    group: docker-registry
+    mode: "0640"
+  no_log: true
+  diff: false
+  notify: Restart registry
+
+- name: Certificate directory (filled by scripts/distribute-certs.sh)
+  ansible.builtin.file:
+    path: "{{ registry_tls_dir }}"
+    state: directory
+    owner: root
+    group: docker-registry
+    mode: "0750"
+
+- name: Storage directory
+  ansible.builtin.file:
+    path: "{{ registry_storage }}"
+    state: directory
+    owner: docker-registry
+    group: docker-registry
+    mode: "0755"
+
+- name: Allow binding port 443
+  block:
+    - name: Drop-in directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/docker-registry.service.d
+        state: directory
+        mode: "0755"
+
+    - name: Drop-in
+      ansible.builtin.copy:
+        src: port443.conf
+        dest: /etc/systemd/system/docker-registry.service.d/port443.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart registry
+
+- name: Garbage collection units
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/systemd/system/{{ item }}
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - registry-gc.service
+    - registry-gc.timer
+  notify: Reload systemd
+
+- name: Services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - docker-registry.service
+    - registry-gc.timer
+    - docker.service
+
+- name: Client credentials for local tooling
+  block:
+    - name: Credentials directory
+      ansible.builtin.file:
+        path: /root/.config/registry
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Credentials file
+      ansible.builtin.template:
+        src: registry.env.j2
+        dest: /root/.config/registry/registry.env
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+      diff: false
+
+- name: Registry UI launcher
+  ansible.builtin.file:
+    path: /opt/registry-ui
+    state: directory
+    mode: "0755"
+
+- name: Registry UI script
+  ansible.builtin.template:
+    src: run.sh.j2
+    dest: /opt/registry-ui/run.sh
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Recreate registry UI
+
+- name: Registry UI state
+  ansible.builtin.command: docker inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' registry-ui
+  register: registry_ui_state
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Start registry UI
+  ansible.builtin.command: /opt/registry-ui/run.sh
+  when: registry_ui_state.stdout != 'true'

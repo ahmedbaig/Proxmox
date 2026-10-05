@@ -1,0 +1,10 @@
+- name: WireGuard VPN (CT 116)
+  hosts: vpn
+  pre_tasks:
+    - name: Load secrets
+      community.sops.load_vars:
+        file: "{{ secrets_dir }}/ansible/wireguard.sops.yaml"
+      no_log: true
+  roles:
+    - common
+    - wireguard

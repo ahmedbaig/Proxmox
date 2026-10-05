@@ -1,0 +1,5 @@
+alloy_hostname: "{{ inventory_hostname }}"
+alloy_loki_push_url: "http://10.10.20.5:3100/loki/api/v1/push"
+alloy_extras: []
+alloy_groups:
+  - systemd-journal

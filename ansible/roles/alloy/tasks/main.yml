@@ -1,0 +1,29 @@
+- name: Grafana apt repository
+  ansible.builtin.include_tasks: apt_repo.yml
+
+- name: Alloy package
+  ansible.builtin.apt:
+    name: alloy
+    state: present
+
+- name: Alloy config
+  ansible.builtin.template:
+    src: config.alloy.j2
+    dest: /etc/alloy/config.alloy
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart alloy
+
+- name: Alloy reads the journal, plus docker and nginx logs where present
+  ansible.builtin.user:
+    name: alloy
+    groups: "{{ alloy_groups + (['docker'] if 'docker' in alloy_extras else []) + (['adm'] if 'nginx' in alloy_extras else []) }}"
+    append: true
+  notify: Restart alloy
+
+- name: Alloy service
+  ansible.builtin.systemd_service:
+    name: alloy
+    enabled: true
+    state: started

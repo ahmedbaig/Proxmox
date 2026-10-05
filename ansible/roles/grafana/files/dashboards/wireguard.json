@@ -1,0 +1,243 @@
+{
+  "uid": "baig-wireguard",
+  "title": "WireGuard VPN",
+  "description": "Where peers connect from and how much they move. Metrics come from a textfile collector on CT 116 — Debian 13 packages no WireGuard exporter, and the third-party ones do not geolocate.",
+  "tags": ["baig", "vpn", "wireguard"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Connected",
+      "gridPos": { "h": 4, "w": 3, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [{ "refId": "A", "expr": "wireguard_peers_connected" }],
+      "options": { "colorMode": "background", "graphMode": "area", "textMode": "value" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [
+        { "color": "red", "value": null }, { "color": "orange", "value": 1 }, { "color": "green", "value": 2 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Configured",
+      "gridPos": { "h": 4, "w": 3, "x": 3, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [{ "refId": "A", "expr": "wireguard_peers" }],
+      "options": { "colorMode": "none", "graphMode": "none", "textMode": "value" },
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "To peers",
+      "gridPos": { "h": 4, "w": 4, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(wireguard_peer_transmit_bytes_total[5m]))" }],
+      "options": { "colorMode": "none", "graphMode": "area", "textMode": "value" },
+      "fieldConfig": { "defaults": { "unit": "Bps", "decimals": 1, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "From peers",
+      "gridPos": { "h": 4, "w": 4, "x": 10, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(wireguard_peer_receive_bytes_total[5m]))" }],
+      "options": { "colorMode": "none", "graphMode": "area", "textMode": "value" },
+      "fieldConfig": { "defaults": { "unit": "Bps", "decimals": 1, "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Endpoint peers dial",
+      "description": "Kept current by the Cloudflare DDNS job on CT 111. If this changes, peers follow within 10 minutes because they resolve baig.network rather than a fixed address.",
+      "gridPos": { "h": 4, "w": 10, "x": 14, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [{ "refId": "A", "expr": "wireguard_server_public_ip_info", "format": "table", "instant": true }],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": {
+          "Time": true, "Value": true, "__name__": true, "instance": true, "job": true,
+          "host": true, "site": true, "role": true, "kind": true, "asn": true } } }
+      ],
+      "options": { "colorMode": "none", "graphMode": "none", "textMode": "value_and_name",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/.*/" } },
+      "fieldConfig": { "defaults": { "unit": "string" }, "overrides": [] }
+    },
+
+    {
+      "id": 10,
+      "type": "geomap",
+      "title": "Where peers are connecting from",
+      "description": "Marker size is bytes sent to that peer, so the biggest dot is doing the most work. Colour is connection state: green connected, orange idle. A peer appearing in an unexpected country is either travel or a stolen key.",
+      "gridPos": { "h": 14, "w": 16, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [
+        { "refId": "LAT", "expr": "wireguard_peer_latitude", "format": "table", "instant": true },
+        { "refId": "LON", "expr": "wireguard_peer_longitude", "format": "table", "instant": true },
+        { "refId": "TX",  "expr": "wireguard_peer_transmit_bytes_total", "format": "table", "instant": true },
+        { "refId": "UP",  "expr": "wireguard_peer_up", "format": "table", "instant": true }
+      ],
+      "transformations": [
+        { "id": "joinByField", "options": { "byField": "peer", "mode": "outer" } },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true, "Time 1": true, "Time 2": true, "Time 3": true, "Time 4": true,
+              "__name__": true, "__name__ 1": true, "__name__ 2": true, "__name__ 3": true, "__name__ 4": true,
+              "instance": true, "instance 1": true, "instance 2": true, "instance 3": true, "instance 4": true,
+              "job": true, "job 1": true, "job 2": true, "job 3": true, "job 4": true,
+              "host": true, "host 1": true, "host 2": true, "host 3": true, "host 4": true,
+              "site": true, "site 1": true, "site 2": true, "site 3": true, "site 4": true,
+              "role": true, "role 1": true, "role 2": true, "role 3": true, "role 4": true,
+              "kind": true, "kind 1": true, "kind 2": true, "kind 3": true, "kind 4": true,
+              "public_key": true, "public_key 1": true, "public_key 2": true, "public_key 3": true, "public_key 4": true,
+              "endpoint_ip 2": true, "city 2": true, "country 2": true
+            },
+            "renameByName": {
+              "peer": "Peer",
+              "Value #LAT": "lat",
+              "Value #LON": "lon",
+              "Value #TX": "Sent",
+              "Value #UP": "State",
+              "endpoint_ip 1": "From IP",
+              "city 1": "City",
+              "country 1": "Country"
+            }
+          }
+        }
+      ],
+      "options": {
+        "view": { "id": "coords", "lat": -25, "lon": 134, "zoom": 3 },
+        "controls": { "showZoom": true, "showAttribution": false, "showScale": false },
+        "basemap": { "type": "default", "name": "Basemap" },
+        "tooltip": { "mode": "details" },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Peers",
+            "location": { "mode": "coords", "latitude": "lat", "longitude": "lon" },
+            "config": {
+              "style": {
+                "size": { "field": "Sent", "min": 8, "max": 30, "fixed": 10 },
+                "color": { "field": "State", "fixed": "green" },
+                "opacity": 0.75,
+                "symbol": { "mode": "fixed", "fixed": "img/icons/marker/circle.svg" },
+                "textConfig": { "fontSize": 11, "offsetY": -16, "textAlign": "center", "textBaseline": "middle" },
+                "text": { "field": "Peer", "fixed": "" }
+              },
+              "showLegend": false
+            },
+            "tooltip": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "orange", "value": null }, { "color": "green", "value": 1 } ] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Sent" }, "properties": [ { "id": "unit", "value": "bytes" } ] },
+          { "matcher": { "id": "byRegexp", "options": "lat|lon" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
+        ]
+      }
+    },
+
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Peers",
+      "description": "Deliberately narrow — name, state, where from, and traffic. Public keys and tunnel addresses are in the WireGuard UI at wireguard.baig.network.",
+      "gridPos": { "h": 14, "w": 8, "x": 16, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [
+        { "refId": "UP",  "expr": "wireguard_peer_up", "format": "table", "instant": true },
+        { "refId": "AGE", "expr": "wireguard_peer_handshake_age_seconds", "format": "table", "instant": true },
+        { "refId": "GEO", "expr": "wireguard_peer_geo_info", "format": "table", "instant": true }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true, "__name__": true, "instance": true, "job": true,
+              "host": true, "site": true, "role": true, "kind": true,
+              "public_key": true, "Value #GEO": true, "region": true,
+              "allowed_ips": true, "asn": true, "country_code": true, "endpoint_ip": true
+            },
+            "renameByName": {
+              "peer": "Peer", "Value #UP": "State", "Value #AGE": "Last seen",
+              "city": "City", "country": "Country"
+            }
+          }
+        },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "State", "desc": false }] } }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left", "minWidth": 70 } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "State" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              { "id": "custom.width", "value": 64 },
+              { "id": "mappings", "value": [ { "type": "value", "options": {
+                  "0": { "text": "idle", "color": "orange", "index": 0 },
+                  "1": { "text": "up", "color": "green", "index": 1 } } } ] }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Last seen" },
+            "properties": [
+              { "id": "unit", "value": "s" }, { "id": "decimals", "value": 0 },
+              { "id": "custom.width", "value": 90 },
+              { "id": "mappings", "value": [ { "type": "value", "options": { "-1": { "text": "never", "color": "red", "index": 0 } } } ] },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [
+                  { "color": "green", "value": null }, { "color": "orange", "value": 180 }, { "color": "red", "value": 3600 } ] } }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Traffic per peer",
+      "description": "Positive is sent to the peer, negative is received from it.",
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [
+        { "refId": "A", "expr": "rate(wireguard_peer_transmit_bytes_total[5m])", "legendFormat": "{{peer}} ←" },
+        { "refId": "B", "expr": "-rate(wireguard_peer_receive_bytes_total[5m])", "legendFormat": "{{peer}} →" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 12, "showPoints": "never", "gradientMode": "opacity" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "calcs": ["max"] } }
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Handshake age",
+      "description": "Healthy peers sawtooth as keepalives reset the counter. A line climbing without resetting means the peer has gone.",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [{ "refId": "A", "expr": "wireguard_peer_handshake_age_seconds > 0", "legendFormat": "{{peer}}" }],
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 0, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true } }
+    }
+  ]
+}

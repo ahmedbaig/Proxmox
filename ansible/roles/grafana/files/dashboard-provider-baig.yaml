@@ -1,0 +1,15 @@
+# /etc/grafana/provisioning/dashboards/baig.yaml
+# Dashboards defined as files rather than clicked in, so they survive a rebuild
+# of this container. Grafana reloads them from disk on an interval.
+apiVersion: 1
+providers:
+  - name: baig
+    orgId: 1
+    folder: Overview
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

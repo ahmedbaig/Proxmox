@@ -1,0 +1,11 @@
+apiVersion: 1
+providers:
+{% for dir, folder in grafana_extra_dashboard_folders.items() %}
+  - name: baig-{{ dir }}
+    orgId: 1
+    folder: "{{ '' if folder == 'General' else folder }}"
+    type: file
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards-extra/{{ dir }}
+{% endfor %}

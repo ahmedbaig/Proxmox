@@ -1,0 +1,12 @@
+proxy_packages:
+  - nginx
+  - socat
+  - net-tools
+  - nmap
+proxy_acme_home: /root/.acme.sh
+proxy_cron_jobs:
+  - '12 1,7,13,19 * * * "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh" > /dev/null'
+  - '*/10 * * * * /usr/bin/python3 /root/cf-ddns.py >> /var/log/cf-ddns.log 2>&1'
+proxy_index_secret: "{{ secrets_dir }}/ansible/files/proxy-hosts-index.html.sops.json"
+proxy_acme_account_secret: "{{ secrets_dir }}/ansible/files/proxy-acme-account.conf.sops.json"
+proxy_allow_without_private_vhosts: false

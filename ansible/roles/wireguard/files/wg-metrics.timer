@@ -1,0 +1,10 @@
+[Unit]
+Description=Collect WireGuard metrics every 30s
+
+[Timer]
+OnBootSec=45
+OnUnitActiveSec=30
+AccuracySec=5
+
+[Install]
+WantedBy=timers.target

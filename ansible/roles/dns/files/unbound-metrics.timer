@@ -1,0 +1,12 @@
+[Unit]
+Description=Collect Unbound statistics every 30 seconds
+
+[Timer]
+# Matches the Prometheus scrape interval, so the flow map is never showing a
+# figure older than one scrape.
+OnBootSec=30s
+OnUnitActiveSec=30s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

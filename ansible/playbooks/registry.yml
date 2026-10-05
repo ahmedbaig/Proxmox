@@ -1,0 +1,11 @@
+- name: Docker registry (CT 119)
+  hosts: registry
+  pre_tasks:
+    - name: Load secrets
+      community.sops.load_vars:
+        file: "{{ secrets_dir }}/ansible/registry.sops.yaml"
+      no_log: true
+  roles:
+    - common
+    - registry
+    - alloy

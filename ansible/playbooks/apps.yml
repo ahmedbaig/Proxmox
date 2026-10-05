@@ -1,0 +1,11 @@
+- name: Apps (CT 113)
+  hosts: apps
+  pre_tasks:
+    - name: Load secrets
+      community.sops.load_vars:
+        file: "{{ secrets_dir }}/ansible/apps.sops.yaml"
+      no_log: true
+  roles:
+    - common
+    - apps
+    - alloy

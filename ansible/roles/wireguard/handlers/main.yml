@@ -1,0 +1,13 @@
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Sync wireguard
+  ansible.builtin.shell: wg syncconf {{ wireguard_interface }} <(wg-quick strip {{ wireguard_interface }})
+  args:
+    executable: /bin/bash
+
+- name: Restart wg-dashboard
+  ansible.builtin.systemd_service:
+    name: wg-dashboard
+    state: restarted

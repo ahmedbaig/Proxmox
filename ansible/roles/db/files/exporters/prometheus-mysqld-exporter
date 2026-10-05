@@ -1,0 +1,1 @@
+ARGS="--config.my-cnf=/etc/.mysqld_exporter.cnf --web.listen-address=:9104 --mysqld.address=127.0.0.1:3306"

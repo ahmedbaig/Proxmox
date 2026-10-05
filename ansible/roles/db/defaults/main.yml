@@ -1,0 +1,57 @@
+db_pg_version: 17
+db_pg_cluster: main
+db_pg_conf_dir: "/etc/postgresql/{{ db_pg_version }}/{{ db_pg_cluster }}"
+db_pg_service: "postgresql@{{ db_pg_version }}-{{ db_pg_cluster }}"
+
+db_pg_hba_lines:
+  - host all all 10.10.20.0/24 scram-sha-256
+  - host all all 10.10.10.0/24 scram-sha-256
+  - host all all 10.10.50.0/24 scram-sha-256
+
+db_postgres_roles:
+  - { name: hive, password_var: db_postgres_hive_password }
+  - { name: speedtest, password_var: db_postgres_speedtest_password }
+  - { name: exporter, password_var: db_postgres_exporter_password, member_of: pg_monitor }
+
+db_postgres_databases:
+  - { name: hive, owner: hive }
+  - { name: speedtest, owner: speedtest }
+  - { name: wiki, owner: postgres }
+  - { name: yamtrack, owner: postgres }
+
+db_mariadb_users:
+  - { user: ahmed, host: "10.10.%", password_var: db_mariadb_admin_password, grant: "ALL PRIVILEGES ON *.*", grant_option: true }
+  - { user: ahmed, host: "192.168.%", password_var: db_mariadb_admin_password, grant: "ALL PRIVILEGES ON *.*", grant_option: true }
+  - { user: exporter, host: localhost, password_var: db_mariadb_exporter_password, grant: "PROCESS, REPLICATION CLIENT, SLAVE MONITOR ON *.*", extra_grant: "SELECT ON performance_schema.*", options: "WITH MAX_USER_CONNECTIONS 3" }
+
+db_redis_settings:
+  - { regexp: '^bind ', line: 'bind 0.0.0.0 -::1' }
+  - { regexp: '^protected-mode ', line: 'protected-mode no' }
+  - { regexp: '^maxmemory ', line: 'maxmemory 256mb' }
+  - { regexp: '^maxmemory-policy ', line: 'maxmemory-policy noeviction' }
+
+db_cert_group: certaccess
+db_cert_members: [postgres, mysql, mongod, redis, couchdb]
+
+db_packages:
+  - postgresql
+  - "postgresql-{{ db_pg_version }}"
+  - mariadb-server
+  - mariadb-client
+  - percona-server-mongodb
+  - percona-mongodb-mongosh
+  - redis-server
+  - couchdb
+  - prometheus-postgres-exporter
+  - prometheus-mysqld-exporter
+  - prometheus-redis-exporter
+
+db_services:
+  - postgresql
+  - mariadb
+  - mongod
+  - redis-server
+  - couchdb
+  - prometheus-postgres-exporter
+  - prometheus-mysqld-exporter
+  - prometheus-redis-exporter

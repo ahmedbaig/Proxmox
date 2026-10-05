@@ -1,0 +1,29 @@
+- name: Grafana apt keyring directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Grafana apt signing key
+  ansible.builtin.shell: >-
+    set -o pipefail &&
+    curl -fsSL https://apt.grafana.com/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/grafana.gpg
+  args:
+    creates: /etc/apt/keyrings/grafana.gpg
+    executable: /bin/bash
+
+- name: Grafana apt repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/grafana.list
+    content: "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main\n"
+    owner: root
+    group: root
+    mode: "0644"
+  register: grafana_apt_repo
+
+- name: Refresh apt cache after adding the Grafana repository
+  ansible.builtin.apt:
+    update_cache: true
+  when: grafana_apt_repo is changed

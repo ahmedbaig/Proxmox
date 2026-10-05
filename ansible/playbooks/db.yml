@@ -1,0 +1,11 @@
+- name: Databases (CT 112)
+  hosts: db
+  pre_tasks:
+    - name: Load secrets
+      community.sops.load_vars:
+        file: "{{ secrets_dir }}/ansible/db.sops.yaml"
+      no_log: true
+  roles:
+    - common
+    - db
+    - alloy

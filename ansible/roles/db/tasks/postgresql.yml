@@ -1,0 +1,71 @@
+- name: PostgreSQL configuration
+  ansible.builtin.copy:
+    src: "postgresql/{{ item }}"
+    dest: "{{ db_pg_conf_dir }}/conf.d/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - 99-baig-tls.conf
+    - 99-baig-tuning.conf
+  notify: Restart postgresql
+
+- name: PostgreSQL client networks
+  ansible.builtin.lineinfile:
+    path: "{{ db_pg_conf_dir }}/pg_hba.conf"
+    line: "{{ item }}"
+    owner: postgres
+    group: postgres
+    mode: "0640"
+  loop: "{{ db_pg_hba_lines }}"
+  notify: Reload postgresql
+
+- name: Existing PostgreSQL roles
+  ansible.builtin.command: runuser -u postgres -- psql -At -c "select rolname from pg_roles"
+  register: db_pg_roles
+  changed_when: false
+  check_mode: false
+
+- name: PostgreSQL superuser password
+  ansible.builtin.command:
+    cmd: runuser -u postgres -- psql -v ON_ERROR_STOP=1 -At -f -
+    stdin: "ALTER ROLE postgres WITH PASSWORD '{{ db_postgres_password }}';"
+  when: db_pg_set_passwords | default(false)
+  no_log: true
+
+- name: PostgreSQL application roles
+  ansible.builtin.command:
+    cmd: runuser -u postgres -- psql -v ON_ERROR_STOP=1 -At -f -
+    stdin: "CREATE ROLE {{ item.name }} LOGIN PASSWORD '{{ lookup('ansible.builtin.vars', item.password_var) }}';"
+  loop: "{{ db_postgres_roles }}"
+  when: item.name not in db_pg_roles.stdout_lines
+  no_log: true
+
+- name: Existing PostgreSQL role memberships
+  ansible.builtin.command: >-
+    runuser -u postgres -- psql -At -c
+    "select r.rolname || ':' || m.rolname from pg_auth_members a
+     join pg_roles r on r.oid = a.member join pg_roles m on m.oid = a.roleid"
+  register: db_pg_members
+  changed_when: false
+  check_mode: false
+
+- name: PostgreSQL role memberships
+  ansible.builtin.command: runuser -u postgres -- psql -v ON_ERROR_STOP=1 -c "GRANT {{ item.member_of }} TO {{ item.name }}"
+  loop: "{{ db_postgres_roles | selectattr('member_of', 'defined') }}"
+  loop_control:
+    label: "{{ item.name }} -> {{ item.member_of }}"
+  when: (item.name ~ ':' ~ item.member_of) not in db_pg_members.stdout_lines
+
+- name: Existing PostgreSQL databases
+  ansible.builtin.command: runuser -u postgres -- psql -At -c "select datname from pg_database"
+  register: db_pg_databases
+  changed_when: false
+  check_mode: false
+
+- name: PostgreSQL databases
+  ansible.builtin.command: runuser -u postgres -- createdb -O {{ item.owner }} {{ item.name }}
+  loop: "{{ db_postgres_databases }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.name not in db_pg_databases.stdout_lines

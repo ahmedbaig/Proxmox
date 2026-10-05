@@ -1,0 +1,17 @@
+# Lab egress lock for CT 118 (gitlab): the lab only. Lift for upgrades:
+#   nft delete table inet lab_egress ; apt-get install gitlab-ce ; nft -f /etc/nftables.d-lab-egress.nft
+# Refused destinations: nft list set inet lab_egress dropped
+table inet lab_egress
+delete table inet lab_egress
+table inet lab_egress {
+  set dropped { type ipv4_addr; flags dynamic,timeout; timeout 7d; counter; }
+  chain output {
+    type filter hook output priority filter; policy drop;
+    oif "lo" accept
+    ct state established,related accept
+    ip daddr { {{ gitlab_egress_allow | join(", ") }} } accept
+    ip6 daddr ::1 accept
+    ip daddr != 0.0.0.0 update @dropped { ip daddr }
+    counter log prefix "lab-egress-drop " level info drop
+  }
+}

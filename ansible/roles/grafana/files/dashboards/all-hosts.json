@@ -1,0 +1,212 @@
+{
+  "uid": "baig-all-hosts",
+  "title": "All Hosts",
+  "description": "CPU, memory, disk, network and uptime for every host running node_exporter: the seven containers, the Proxmox host and the Mac mini. Windows (win11) and the ml VM are excluded — neither runs an exporter.",
+  "tags": ["baig", "hosts", "overview"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "host",
+        "label": "Host",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+        "query": "label_values(node_uname_info{job=\"node\"}, host)",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Every host at a glance",
+      "description": "One row per host. Sorted so anything unhealthy floats to the top.",
+      "gridPos": { "h": 11, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [
+        { "refId": "UP",   "expr": "up{job=\"node\"}", "format": "table", "instant": true },
+        { "refId": "CPU",  "expr": "100 - (avg by (host) (rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[5m])) * 100)", "format": "table", "instant": true },
+        { "refId": "MEM",  "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"node\"} / node_memory_MemTotal_bytes{job=\"node\"})", "format": "table", "instant": true },
+        { "refId": "DISK", "expr": "100 * (1 - node_filesystem_avail_bytes{job=\"node\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"node\",mountpoint=\"/\"})", "format": "table", "instant": true },
+        { "refId": "LOAD", "expr": "node_load1{job=\"node\"}", "format": "table", "instant": true },
+        { "refId": "UPT",  "expr": "time() - node_boot_time_seconds{job=\"node\"}", "format": "table", "instant": true }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true, "job": true, "__name__": true, "instance": true,
+              "site": true, "mountpoint": true, "device": true, "fstype": true,
+              "role": true, "kind": true
+            },
+            "renameByName": {
+              "host": "Host",
+              "Value #UP": "Up",
+              "Value #CPU": "CPU",
+              "Value #MEM": "Memory",
+              "Value #DISK": "Disk /",
+              "Value #LOAD": "Load 1m",
+              "Value #UPT": "Uptime"
+            }
+          }
+        },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "Host" }] } }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Up" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              { "id": "custom.width", "value": 70 },
+              { "id": "mappings", "value": [ { "type": "value", "options": { "0": { "text": "DOWN", "color": "red", "index": 0 }, "1": { "text": "up", "color": "green", "index": 1 } } } ] }
+            ]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "CPU|Memory|Disk /" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 1 },
+              { "id": "min", "value": 0 },
+              { "id": "max", "value": 100 },
+              { "id": "custom.cellOptions", "value": { "type": "gauge", "mode": "gradient" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "#EAB839", "value": 75 }, { "color": "orange", "value": 88 }, { "color": "red", "value": 95 } ] } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Load 1m" },
+            "properties": [ { "id": "decimals", "value": 2 }, { "id": "custom.width", "value": 90 } ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Uptime" },
+            "properties": [ { "id": "unit", "value": "s" }, { "id": "decimals", "value": 0 } ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "CPU used",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 11 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 - (avg by (host) (rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\",host=~\"$host\"}[5m])) * 100)",
+          "legendFormat": "{{host}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 8, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "calcs": ["mean", "max"] } }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Memory used",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 11 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"node\",host=~\"$host\"} / node_memory_MemTotal_bytes{job=\"node\",host=~\"$host\"})",
+          "legendFormat": "{{host}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 8, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "calcs": ["mean", "max"] } }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Root filesystem used",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (1 - node_filesystem_avail_bytes{job=\"node\",mountpoint=\"/\",host=~\"$host\"} / node_filesystem_size_bytes{job=\"node\",mountpoint=\"/\",host=~\"$host\"})",
+          "legendFormat": "{{host}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 8, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "calcs": ["last"] } }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Network throughput",
+      "description": "Sum of all non-loopback interfaces. Receive is plotted negative so send and receive are readable on one axis.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (host) (rate(node_network_transmit_bytes_total{job=\"node\",device!~\"lo|veth.*|fwbr.*|fwln.*|fwpr.*\",host=~\"$host\"}[5m]))",
+          "legendFormat": "{{host}} tx"
+        },
+        {
+          "refId": "B",
+          "expr": "-sum by (host) (rate(node_network_receive_bytes_total{job=\"node\",device!~\"lo|veth.*|fwbr.*|fwln.*|fwpr.*\",host=~\"$host\"}[5m]))",
+          "legendFormat": "{{host}} rx"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 6, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true } }
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Load average (1m)",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 27 },
+      "datasource": { "type": "prometheus", "uid": "fen19il3pklq8c" },
+      "targets": [
+        { "refId": "A", "expr": "node_load1{job=\"node\",host=~\"$host\"}", "legendFormat": "{{host}}" }
+      ],
+      "fieldConfig": {
+        "defaults": { "decimals": 2, "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 0, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true } }
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Log volume into Loki",
+      "description": "A host dropping to zero means its Alloy agent has stopped — worth noticing before you need the logs.",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 27 },
+      "datasource": { "type": "loki", "uid": "aen18i6tw61a8a" },
+      "targets": [
+        { "refId": "A", "expr": "sum by (host) (rate({job=~\"systemd-journal|docker|nginx\"}[5m]))", "legendFormat": "{{host}}" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "logs/s", "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "showPoints": "never", "stacking": { "mode": "normal" } } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true } }
+    }
+  ]
+}

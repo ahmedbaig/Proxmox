@@ -1,0 +1,39 @@
+- name: Postgres exporter settings
+  ansible.builtin.template:
+    src: prometheus-postgres-exporter.j2
+    dest: /etc/default/prometheus-postgres-exporter
+    owner: prometheus
+    group: prometheus
+    mode: "0640"
+  no_log: true
+  diff: false
+  notify: Restart prometheus-postgres-exporter
+
+- name: MariaDB exporter credentials
+  ansible.builtin.template:
+    src: mysqld_exporter.cnf.j2
+    dest: /etc/.mysqld_exporter.cnf
+    owner: root
+    group: prometheus
+    mode: "0640"
+  no_log: true
+  diff: false
+  notify: Restart prometheus-mysqld-exporter
+
+- name: MariaDB exporter settings
+  ansible.builtin.copy:
+    src: exporters/prometheus-mysqld-exporter
+    dest: /etc/default/prometheus-mysqld-exporter
+    owner: prometheus
+    group: prometheus
+    mode: "0640"
+  notify: Restart prometheus-mysqld-exporter
+
+- name: Redis exporter settings
+  ansible.builtin.copy:
+    src: exporters/prometheus-redis-exporter
+    dest: /etc/default/prometheus-redis-exporter
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart prometheus-redis-exporter

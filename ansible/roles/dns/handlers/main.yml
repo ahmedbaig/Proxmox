@@ -1,0 +1,13 @@
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Restart Unbound
+  ansible.builtin.service:
+    name: unbound
+    state: restarted
+
+- name: Restart AdGuard Home
+  ansible.builtin.service:
+    name: AdGuardHome
+    state: restarted

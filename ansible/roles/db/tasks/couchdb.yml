@@ -1,0 +1,21 @@
+- name: CouchDB settings and admin
+  ansible.builtin.template:
+    src: 10-admins.ini.j2
+    dest: /opt/couchdb/etc/local.d/10-admins.ini
+    owner: couchdb
+    group: couchdb
+    mode: "0644"
+  no_log: true
+  diff: false
+  notify: Restart couchdb
+
+- name: CouchDB Erlang VM arguments
+  ansible.builtin.template:
+    src: vm.args.j2
+    dest: /opt/couchdb/etc/vm.args
+    owner: couchdb
+    group: couchdb
+    mode: "0640"
+  no_log: true
+  diff: false
+  notify: Restart couchdb

@@ -1,0 +1,52 @@
+# Lab GitLab (CT 118, 10.10.50.40) — single user, Lab VLAN, never exposed.
+# People reach it through the proxy as https://gitlab.baig.network; machines on
+# the Lab VLAN (runners on CT 117) use https://gitlab.lab.baig.network directly.
+# See the vault note "CI and Registry".
+
+external_url '{{ gitlab_external_url }}'
+
+## TLS: the lab wildcard certificate, pushed by /root/distribute-certs.sh on pve
+letsencrypt['enable'] = false
+nginx['ssl_certificate'] = '{{ gitlab_ssl_dir }}/{{ gitlab_cert_name }}.crt'
+nginx['ssl_certificate_key'] = '{{ gitlab_ssl_dir }}/{{ gitlab_cert_name }}.key'
+nginx['redirect_http_to_https'] = true
+## Behind CT 111: trust its X-Forwarded-For so logs show the real client
+nginx['real_ip_trusted_addresses'] = {{ gitlab_trusted_proxies | to_json | replace('"', "'") }}
+nginx['real_ip_header'] = 'X-Forwarded-For'
+nginx['real_ip_recursive'] = 'on'
+
+## SSH clones go straight to this container, not through the proxy
+gitlab_rails['gitlab_ssh_host'] = '{{ gitlab_ssh_host }}'
+gitlab_rails['time_zone'] = '{{ gitlab_time_zone }}'
+
+## Unprivileged LXC cannot set kernel sysctls
+package['modify_kernel_parameters'] = false
+
+## One user: keep memory down (~3 GB instead of ~6)
+puma['worker_processes'] = 0
+sidekiq['concurrency'] = 5
+postgresql['shared_buffers'] = '256MB'
+gitlab_rails['env'] = { 'MALLOC_CONF' => 'dirty_decay_ms:1000,muzzy_decay_ms:1000' }
+gitaly['env'] = { 'MALLOC_CONF' => 'dirty_decay_ms:1000,muzzy_decay_ms:1000', 'GITALY_COMMAND_SPAWN_MAX_PARALLEL' => '2' }
+
+## Not needed here
+prometheus_monitoring['enable'] = false
+gitlab_kas['enable'] = false
+registry['enable'] = false                       # images live on CT 119
+gitlab_rails['registry_enabled'] = false
+gitlab_rails['gitlab_default_projects_features_container_registry'] = false
+gitlab_pages['enable'] = false
+mattermost['enable'] = false
+
+## No telemetry, no phoning home
+gitlab_rails['usage_ping_enabled'] = false
+gitlab_rails['include_optional_metrics_in_service_ping'] = false
+
+## Mail goes to mailcatcher on CT 113, never out
+gitlab_rails['smtp_enable'] = true
+gitlab_rails['smtp_address'] = '{{ gitlab_smtp_address }}'
+gitlab_rails['smtp_port'] = {{ gitlab_smtp_port }}
+gitlab_rails['smtp_authentication'] = false
+gitlab_rails['smtp_enable_starttls_auto'] = false
+gitlab_rails['smtp_tls'] = false
+gitlab_rails['gitlab_email_from'] = '{{ gitlab_email_from }}'

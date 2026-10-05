@@ -1,0 +1,27 @@
+# /etc/systemd/system/wg-dashboard.service
+# WGDashboard on CT 116. It reads and writes /etc/wireguard/wg0.conf in place,
+# so peers created by wg-peer.sh (phone, oracle) are preserved — unlike wg-easy,
+# which keeps its own peer database and would have meant reissuing Oracle's keys
+# while Gatus depends on that tunnel.
+#
+# Type=forking with PIDFile, because the shipped gunicorn.conf.py sets
+# daemon = True. Under Type=simple systemd watches the parent, sees it fork away
+# and immediately marks the unit dead — the service reported "active" once and
+# then "Deactivated successfully" with nothing listening.
+[Unit]
+Description=WGDashboard — WireGuard web UI
+After=network-online.target wg-quick@wg0.service
+Wants=network-online.target
+
+[Service]
+Type=forking
+WorkingDirectory=/opt/WGDashboard/src
+PIDFile=/opt/WGDashboard/src/gunicorn.pid
+ExecStart=/opt/WGDashboard/src/venv/bin/gunicorn --config /opt/WGDashboard/src/gunicorn.conf.py
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=5
+TimeoutStartSec=90
+
+[Install]
+WantedBy=multi-user.target

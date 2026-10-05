@@ -1,0 +1,136 @@
+- name: Install packages
+  ansible.builtin.apt:
+    name: "{{ wireguard_packages }}"
+    state: present
+
+- name: WireGuard directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop:
+    - /etc/wireguard
+    - /etc/wireguard/peers
+
+- name: Server private key
+  ansible.builtin.copy:
+    content: "{{ wireguard_server_private_key }}\n"
+    dest: /etc/wireguard/server.key
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  diff: false
+
+- name: Server public key
+  ansible.builtin.copy:
+    content: "{{ wireguard_server_public_key }}\n"
+    dest: /etc/wireguard/server.pub
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Server config
+  ansible.builtin.template:
+    src: wg0.conf.j2
+    dest: /etc/wireguard/{{ wireguard_interface }}.conf
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  diff: false
+  notify: Sync wireguard
+
+- name: Client configs
+  ansible.builtin.copy:
+    content: "{{ item.value }}"
+    dest: /etc/wireguard/peers/{{ item.key }}.conf
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ wireguard_client_configs | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  no_log: true
+  diff: false
+
+- name: IP forwarding
+  ansible.builtin.template:
+    src: 99-wg-forward.conf.j2
+    dest: /etc/sysctl.d/99-wg-forward.conf
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: WireGuard interface
+  ansible.builtin.systemd_service:
+    name: wg-quick@{{ wireguard_interface }}
+    enabled: true
+    state: started
+
+- name: WGDashboard checkout
+  ansible.builtin.git:
+    repo: "{{ wgdashboard_repo }}"
+    dest: "{{ wgdashboard_dir }}"
+    version: "{{ wgdashboard_commit }}"
+    depth: 1
+    update: false
+
+- name: WGDashboard virtualenv
+  ansible.builtin.shell: python3 -m venv venv && venv/bin/pip install -r requirements.txt gunicorn
+  args:
+    chdir: "{{ wgdashboard_dir }}/src"
+    creates: "{{ wgdashboard_dir }}/src/venv/bin/gunicorn"
+
+- name: WGDashboard settings
+  ansible.builtin.template:
+    src: wg-dashboard.ini.j2
+    dest: "{{ wgdashboard_dir }}/src/wg-dashboard.ini"
+    owner: root
+    group: root
+    mode: "0644"
+  no_log: true
+  diff: false
+  notify: Restart wg-dashboard
+
+- name: WGDashboard unit
+  ansible.builtin.copy:
+    src: wg-dashboard.service
+    dest: /etc/systemd/system/wg-dashboard.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart wg-dashboard
+
+- name: Peer metrics collector
+  ansible.builtin.copy:
+    src: wg-metrics.py
+    dest: /usr/local/bin/wg-metrics.py
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Peer metrics units
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/systemd/system/{{ item }}
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - wg-metrics.service
+    - wg-metrics.timer
+  notify: Reload systemd
+
+- name: Services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - wg-dashboard.service
+    - wg-metrics.timer

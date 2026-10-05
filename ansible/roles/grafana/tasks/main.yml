@@ -1,0 +1,79 @@
+- name: Grafana apt repository
+  ansible.builtin.include_role:
+    name: alloy
+    tasks_from: apt_repo
+
+- name: Grafana package
+  ansible.builtin.apt:
+    name: grafana
+    state: present
+
+- name: Grafana plugins
+  ansible.builtin.command: grafana cli --homepath /usr/share/grafana plugins install {{ item }}
+  args:
+    creates: "/var/lib/grafana/plugins/{{ item }}"
+  loop: "{{ grafana_plugins }}"
+  notify: Restart grafana
+
+- name: Dashboard provider for the files below
+  ansible.builtin.copy:
+    src: dashboard-provider-baig.yaml
+    dest: /etc/grafana/provisioning/dashboards/baig.yaml
+    owner: grafana
+    group: grafana
+    mode: "0644"
+  notify: Restart grafana
+
+- name: Dashboards directory
+  ansible.builtin.file:
+    path: /var/lib/grafana/dashboards
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: "0755"
+
+- name: Dashboards
+  ansible.builtin.copy:
+    src: "dashboards/{{ item }}"
+    dest: "/var/lib/grafana/dashboards/{{ item }}"
+    owner: grafana
+    group: grafana
+    mode: "0644"
+  loop: "{{ grafana_dashboards }}"
+
+- name: Datasources as code
+  ansible.builtin.template:
+    src: datasources-baig.yaml.j2
+    dest: /etc/grafana/provisioning/datasources/baig.yaml
+    owner: root
+    group: grafana
+    mode: "0640"
+  when: grafana_provision_datasources | bool
+  notify: Restart grafana
+
+- name: Extra dashboards
+  when: grafana_provision_extra_dashboards | bool
+  block:
+    - name: Extra dashboards directories
+      ansible.builtin.copy:
+        src: dashboards-extra/
+        dest: /var/lib/grafana/dashboards-extra/
+        owner: grafana
+        group: grafana
+        mode: "0644"
+        directory_mode: "0755"
+
+    - name: Extra dashboards provider
+      ansible.builtin.template:
+        src: dashboard-provider-extra.yaml.j2
+        dest: /etc/grafana/provisioning/dashboards/baig-extra.yaml
+        owner: grafana
+        group: grafana
+        mode: "0644"
+      notify: Restart grafana
+
+- name: Grafana service
+  ansible.builtin.systemd_service:
+    name: grafana-server
+    enabled: true
+    state: started

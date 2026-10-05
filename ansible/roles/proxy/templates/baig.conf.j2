@@ -1,0 +1,752 @@
+# /etc/nginx/conf.d/baig.conf  —  27 Sep 2026
+#
+# One certificate covers baig.network, *.baig.network and the per-VLAN levels
+# *.servers, *.home, *.lab, *.iot and *.main. Every name below is served by it.
+#
+# Moving a service = change its proxy_pass line, reload. No DNS change needed:
+# flat names all resolve to this container via AdGuard's *.baig.network rewrite.
+#
+# NOT PROXIED — connect directly
+#   postgres   db.servers.baig.network:5432    user postgres
+#   mariadb    db.servers.baig.network:3306    user ahmed (root is localhost-only)
+#   mongodb    db.servers.baig.network:27017   user admin
+#   redis      db.servers.baig.network:6379    no auth
+#   couchdb    db.servers.baig.network:5984    also proxied as obsidian.baig.network
+# The Mac mini's copies of these are STOPPED as of 27 Sep 2026; CT 112 is the
+# only live set. Its data was verified identical: 723 tables, 22,661,265 rows.
+#
+# NOT PROXIED — no user interface worth exposing
+#   node_exporter          :9100 on every host
+#   blackbox_exporter      :9115 on metrics and pve
+#   postgres/mysqld/redis  :9187 :9104 :9121 on db
+#   mongodb/adguard        :9217 :9617 on apps
+#   alloy                  :12345 on every host
+# These are Prometheus scrape targets. See prometheus.yml on CT 114.
+#
+# PROXIED, BUT OUTSIDE THE NETWORK
+#   gatus      oracle.baig.network -> http://158.178.143.215:80
+#              Upstream is plain http over the internet: Oracle has no TLS and
+#              there is no route from here into the tunnel. Direct link
+#              http://158.178.143.215/ still works and is the fallback for when
+#              the lab itself is unreachable.
+#
+# SELF-SIGNED BACKENDS — proxied so the browser sees the real certificate
+#   pve        10.10.20.20:8006   Proxmox, its own CA
+#   router     10.10.20.1:443     UniFi OS, CN=unifi.local
+# Both use proxy_ssl_verify off. That is safe here and would not be on an
+# untrusted path: it skips verifying the BACKEND's cert over a link that never
+# leaves the Servers VLAN, while the client-facing side is fully verified.
+#
+# VPN endpoints (port forwards on the UX7, not nginx)
+#   wireguard  udp/51820 -> 10.10.50.20   UI at wireguard.baig.network
+#   openvpn    udp/1194  -> 192.168.0.3   kept indefinitely
+
+map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+
+# Who gets a helpful redirect, and who gets stonewalled.
+#
+# Unknown hostnames return 444 (close, no reply) because that tells a scanner
+# nothing. But on the home network or over the VPN a wrong name is a typo, not an
+# attack, and landing on the service register is more useful than a dead
+# connection. So the behaviour is chosen by source address.
+#
+# tcp/443 is NOT forwarded on the UX7 today -- verified from the Oracle box
+# straight at the WAN address, both 80 and 443 filtered -- so nothing outside can
+# reach this at all right now. This is written by source anyway so it stays
+# correct the day a forward is added and nobody remembers this file.
+#
+# 10.10.50.20 is the important entry and it is easy to get wrong: CT 116
+# MASQUERADEs 10.9.0.0/24 out of eth0, so nginx sees the VPN CONTAINER, never the
+# peer address. It is inside 10.10.0.0/16 below. 10.9.0.0/24 is listed only so
+# this keeps working if that masquerade is ever removed.
+geo $lab_client {
+    default        0;
+    10.10.0.0/16   1;   # every VLAN, including 10.10.50.20 (VPN egress)
+    10.9.0.0/24    1;   # WireGuard peers directly, if masquerade is dropped
+    192.168.0.0/25 1;   # Main Net
+    127.0.0.0/8    1;   # the proxy itself, and blackbox probes
+}
+
+server {
+    listen 80 default_server;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
+
+# Grafana — dashboards. Moved off the Mac mini to CT 115.
+# The second Grafana (grafana-metrics, 10.3.3, port 3123) had zero
+# dashboards and was removed; this instance carries all 14.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name grafana.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.7:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# Prometheus — merged. The second instance (prometheus-metrics, port 9190)
+# had nine targets, all down, all on legacy ahmedhome.com names. Its jobs
+# were folded into this one and the block removed.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name prometheus.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.5:9090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name loki.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.5:3100;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# Dozzle — live Docker logs on the Mac mini. Per-host by nature, so it
+# stays there alongside Plex, Stremio and Transmission.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name dozzle.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.10:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# Glances — Mac mini host stats.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name glances.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.10:61208;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# Portainer — Docker UI on the Mac mini.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name yamtrack.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.6:8084;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name mailcatcher.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.6:1080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name webhook.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.6:8083;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name stremio.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.10:11470;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# mongo-express -> db
+# mongodb-exporter -> db
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name plex.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass https://10.10.20.10:32400;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name transmission.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.10:9091;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# was vpn.macmini:5152 — confirm what this is
+# AdGuard — the only DNS server now
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name dns1.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.2:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+{{ proxy_private_vhosts['work-dev'] | default('') }}
+
+# Proxmox UI — long timeout + websockets for console/shell
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name pve.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass https://10.10.20.20:8006;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 3600s;
+        proxy_buffering off;
+    }
+}
+
+# UniFi gateway (UX7) — the router's own UI, behind the wildcard certificate.
+#
+# Backend is 10.10.20.1, the gateway's Servers-VLAN interface, deliberately not
+# 192.168.0.1: both answer, but .1 on this subnet is one hop from the proxy and
+# needs no inter-VLAN policy to keep working.
+#
+# UniFi OS presents a self-signed cert (CN=unifi.local, issued to itself), which
+# is the entire reason for proxying it — proxy_ssl_verify off accepts it here, and
+# the browser gets the real certificate for router.baig.network instead of a
+# permanent warning you learn to click through.
+#
+# It is a single-page app with long-lived websockets for live stats, so it needs
+# the Upgrade headers, buffering off, and a read timeout well past the default 60s
+# or the UI drops its connection every minute.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name router.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass https://10.10.20.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_ssl_server_name on;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 3600s;
+        proxy_buffering off;
+        proxy_request_buffering off;
+    }
+}
+
+{{ proxy_private_vhosts['work-api'] | default('') }}
+
+# Obsidian Self-hosted LiveSync — CouchDB on the db container
+# Long read timeout: LiveSync holds a continuous _changes feed open.
+# Buffering off for the same reason. Body limit matches CouchDB's
+# max_http_request_size; the 1 MB nginx default would break large notes.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name obsidian.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    client_max_body_size 4g;
+    location / {
+        proxy_pass http://10.10.20.4:5984;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 3600s;
+        proxy_buffering off;
+    }
+}
+
+# Alertmanager — routes certificate expiry and service alerts
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name alertmanager.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.5:9093;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# WireGuard UI — create, download and monitor VPN peers.
+# Lives on the VPN container itself so it can read wg0 directly. Reachable
+# because Servers -> Lab is permitted; nothing in Lab can reach back except
+# 10.10.50.20 on the proxy's 80/443.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name wireguard.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.50.20:10086;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# cAdvisor — container metrics from the apps container
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name cadvisor.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.20.6:8085;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# Service register — the index of where everything lives.
+# No longer default_server, and autoindex is off: it used to be both, so any
+# unmatched hostname produced a directory listing of /var/www/hosts. That is
+# now handled by the return 444 block below.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name home.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    root /var/www/hosts;
+    index index.html;
+    autoindex off;
+    location / { try_files $uri $uri/ /index.html =404; }
+}
+
+# Gatus on the Oracle box, proxied so it gets the real certificate.
+#
+# Previously an AdGuard rewrite sent oracle.baig.network straight to
+# 158.178.143.215, which meant plain http:// in the browser. That is why its card
+# on the service register carries data-nocheck: an http:// fetch from an https://
+# page is mixed content and the status dot could never succeed.
+#
+# UPSTREAM IS PLAIN HTTP, OVER THE INTERNET. Oracle has no TLS listener -- :443 is
+# closed -- and there is no route from here into the WireGuard tunnel:
+# `ip route get 10.9.0.3` goes out the default gateway, and Oracle's own firewall
+# blocks wg0 inbound anyway. So browser -> nginx is encrypted and nginx -> Oracle
+# is not. No worse than before, when the browser went direct over http, but it is not
+# the full win that a padlock implies. Giving Oracle a certificate, or opening the
+# tunnel the other way, would close it.
+#
+# CAVEAT WORTH REMEMBERING: this puts the watchdog behind the thing it watches.
+# Gatus answers "is the lab reachable from outside?", and reaching it through this
+# proxy means that when the lab is down the dashboard is too. Telegram still
+# alerts, and http://158.178.143.215/ still works directly -- use that when the
+# house is on fire.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name oracle.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://158.178.143.215:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        # Crossing the internet, so be less patient than for a LAN upstream and do
+        # not let a hung Oracle hold a worker open.
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 60s;
+        proxy_buffering off;
+    }
+}
+
+# GS724T switch UI, proxied so it can be reached over HTTPS.
+#
+# The switch speaks HTTP only -- :443 is closed and it has no way to get a
+# certificate -- so the name previously had to be used as http://, which modern
+# browsers upgrade to https:// on a typed hostname and then fail. Resolving the
+# same name to this proxy instead means the browser gets the real wildcard
+# certificate (*.main.baig.network covers it) and nginx does the plain-HTTP hop
+# on the LAN.
+#
+# That hop is permitted by the `Servers -> Main Net mgmt` UniFi policy, which
+# allows 22/80/443 to 192.168.0.3, .91 and .119 only. If this starts returning
+# 502, check that policy before suspecting the switch.
+#
+# The UI is an old frame-based one but every reference is root-relative
+# (/base/style.css, /base/js/...) with no absolute URLs, and it accepts a
+# rewritten Host, so it proxies without path rewriting.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name netgear.main.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://192.168.0.119:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        # Embedded web servers on switches are slow and easily upset by keepalive
+        # and buffering; keep it simple and patient enough for a config save.
+        proxy_buffering off;
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# The apex, baig.network, redirected to the service register.
+#
+# It had no server block, so it fell to the catch-all and returned 444. Nothing
+# depends on HTTP to the apex: WireGuard peers dial baig.network:51820 over UDP,
+# and Gatus checks the public A record through DNS rather than fetching it. So
+# this is free to redirect.
+#
+# 302, not 301. A 301 is cached by the browser indefinitely, so if a real vhost is
+# ever wanted on the apex every device that visited once would keep redirecting and
+# need its cache cleared by hand.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+
+    # `if` is only safe here because the block contains nothing but return --
+    # that is the documented exception to "if is evil".
+    if ($lab_client) {
+        return 302 https://home.baig.network/;
+    }
+    return 444;
+}
+
+# Lab GitLab (CT 118) — git over HTTPS, web UI, large pushes. SSH clones go
+# straight to gitlab.lab.baig.network:22, not through here.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name gitlab.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    client_max_body_size 0;
+    location / {
+        proxy_pass https://10.10.50.40;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 900s;
+        proxy_read_timeout 900s;
+        proxy_buffering off;
+        proxy_request_buffering off;
+    }
+}
+
+# Lab Docker registry (CT 119) — image layers can be hundreds of MB, so no body
+# limit and no buffering. Machines on the Lab VLAN use registry.lab.baig.network.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name registry.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    client_max_body_size 0;
+    chunked_transfer_encoding on;
+    # Browsers opening the bare host land on the web UI; docker only uses /v2/.
+    location = / {
+        return 302 https://registry-ui.baig.network/;
+    }
+    location / {
+        proxy_pass https://10.10.50.41;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_ssl_verify off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 900s;
+        proxy_read_timeout 900s;
+        proxy_buffering off;
+        proxy_request_buffering off;
+    }
+}
+
+# Lab registry web UI (CT 119, joxit/docker-registry-ui) — browse and delete
+# images; login is the registry's own (user lab).
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name registry-ui.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    location / {
+        proxy_pass http://10.10.50.41:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout 300s;
+    }
+}
+
+{{ proxy_private_vhosts['work-lab'] | default('') }}
+
+# Catch-all for 443 — anything not matching a server_name above.
+#
+# From outside: 444, nginx's non-standard "close without replying", which tells a
+# scanner nothing at all. Unchanged.
+#
+# From the lab or the VPN: 302 to the service register, because a name that does
+# not exist here is a typo and a dead connection is a poor way to learn that.
+#
+# The redirect drops the path deliberately. The register is one page, so
+# /some/deep/path carried over to it would only 404; sending everything to the
+# root is the honest answer.
+#
+# KNOWN LIMIT, and it is the certificate's fault rather than this block's: the
+# wildcard covers *.baig.network and *.<vlan>.baig.network, which is ONE extra
+# label. A name like a.b.baig.network fails TLS verification before nginx ever
+# sees the request, so no redirect can happen. AdGuard resolves those to this
+# container quite happily, which makes it look like a proxy problem. It is not;
+# it needs another SAN.
+server {
+    listen 443 ssl default_server;
+    http2 on;
+    server_name _;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+
+    if ($lab_client) {
+        return 302 https://home.baig.network/;
+    }
+    return 444;
+}

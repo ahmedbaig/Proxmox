@@ -1,0 +1,74 @@
+- name: Apt keyring directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: GitLab package signing key
+  ansible.builtin.shell: curl -fsSL {{ gitlab_repo_key_url }} | gpg --dearmor > {{ gitlab_repo_keyring }}
+  args:
+    creates: "{{ gitlab_repo_keyring }}"
+
+- name: GitLab package repository
+  ansible.builtin.template:
+    src: gitlab_gitlab-ce.list.j2
+    dest: /etc/apt/sources.list.d/gitlab_gitlab-ce.list
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: GitLab CE
+  ansible.builtin.apt:
+    name: gitlab-ce={{ gitlab_version }}
+    state: present
+
+- name: Certificate directory (filled by scripts/distribute-certs.sh)
+  ansible.builtin.file:
+    path: "{{ gitlab_ssl_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: GitLab configuration
+  ansible.builtin.template:
+    src: gitlab.rb.j2
+    dest: /etc/gitlab/gitlab.rb
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Reconfigure gitlab
+
+- name: GitLab secrets (restored only on a fresh install; GitLab owns the file afterwards)
+  ansible.builtin.copy:
+    content: "{{ gitlab_secrets_json }}"
+    dest: /etc/gitlab/gitlab-secrets.json
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+  no_log: true
+  diff: false
+
+- name: Outbound lock (LAN only)
+  ansible.builtin.template:
+    src: nftables.d-lab-egress.nft.j2
+    dest: "{{ gitlab_egress_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload nftables
+
+- name: nftables main config
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Reload nftables
+
+- name: nftables on boot
+  ansible.builtin.systemd_service:
+    name: nftables
+    enabled: true

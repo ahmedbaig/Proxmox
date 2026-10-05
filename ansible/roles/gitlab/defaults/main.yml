@@ -1,0 +1,17 @@
+gitlab_version: 19.4.1-ce.0
+gitlab_external_url: "https://gitlab.{{ domain }}"
+gitlab_ssh_host: "gitlab.lab.{{ domain }}"
+gitlab_ssl_dir: /etc/gitlab/ssl
+gitlab_cert_name: baig
+gitlab_trusted_proxies:
+  - 10.10.20.3
+gitlab_time_zone: Australia/Sydney
+gitlab_smtp_address: 10.10.20.6
+gitlab_smtp_port: 1025
+gitlab_email_from: "gitlab@lab.{{ domain }}"
+gitlab_repo_key_url: https://packages.gitlab.com/gitlab/gitlab-ce/gpgkey
+gitlab_repo_keyring: /etc/apt/keyrings/gitlab_gitlab-ce-archive-keyring.gpg
+gitlab_egress_file: /etc/nftables.d-lab-egress.nft
+gitlab_egress_allow:
+  - 10.10.0.0/16
+  - 127.0.0.0/8

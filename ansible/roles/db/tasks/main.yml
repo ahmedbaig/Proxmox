@@ -1,0 +1,40 @@
+- name: Repositories
+  ansible.builtin.import_tasks: repos.yml
+
+- name: Packages
+  ansible.builtin.apt:
+    name: "{{ db_packages }}"
+    state: present
+
+- name: Certificate access group
+  ansible.builtin.import_tasks: tls.yml
+
+- name: PostgreSQL
+  ansible.builtin.import_tasks: postgresql.yml
+
+- name: MariaDB
+  ansible.builtin.import_tasks: mariadb.yml
+
+- name: MongoDB
+  ansible.builtin.import_tasks: mongodb.yml
+
+- name: Redis
+  ansible.builtin.import_tasks: redis.yml
+
+- name: CouchDB
+  ansible.builtin.import_tasks: couchdb.yml
+
+- name: Exporters
+  ansible.builtin.import_tasks: exporters.yml
+
+- name: Services running
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop: "{{ db_services }}"
+
+- name: PostgreSQL cluster running (enabled through postgresql.service)
+  ansible.builtin.service:
+    name: "{{ db_pg_service }}"
+    state: started

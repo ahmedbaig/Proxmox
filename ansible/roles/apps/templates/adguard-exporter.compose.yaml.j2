@@ -1,0 +1,32 @@
+# CT 113 — /opt/stacks/adguard-exporter/compose.yaml
+#
+# AdGuard Home has no native /metrics endpoint (confirmed: 404 on v0.107.79)
+# and there is no Debian package, so this exporter runs here alongside the
+# other container-only exporters.
+#
+# Configured with explicit flags, not environment variables: this image expects
+# -adguard_hostname / -adguard_port / -adguard_protocol. The ADGUARD_SERVERS
+# variable used by older versions is silently ignored — the exporter starts,
+# logs "Starting HTTP server", registers its metric families, polls the default
+# 127.0.0.1 inside its own container, and exposes nothing. No error is logged
+# even at debug level.
+services:
+  adguard-exporter:
+    image: ebrianne/adguard-exporter:latest
+    container_name: adguard-exporter
+    restart: always
+    ports:
+      - "9617:9617"
+    # The image sets Cmd to ./adguard_exporter with no Entrypoint, so a bare
+    # `command:` would replace the binary itself rather than pass it arguments.
+    entrypoint: /root/adguard_exporter
+    command:
+      - -adguard_protocol=http
+      - -adguard_hostname=10.10.20.2
+      - -adguard_port=80
+      - -adguard_username=ahmed
+      - -adguard_password={{ apps_adguard_password }}
+      - -interval=30s
+      # Reverse DNS on every client IP adds load to dns1 for no benefit here;
+      # AdGuard already resolves client names itself via its rdns source.
+      - -rdns_enabled=false

@@ -1,0 +1,48 @@
+# /etc/unbound/unbound.conf.d/adguard.conf   (dns1, CT 110)
+server:
+    interface: 127.0.0.1
+    port: 5335
+    do-ip6: no
+    harden-glue: yes
+    harden-dnssec-stripped: yes
+    edns-buffer-size: 1232
+    prefetch: yes
+    num-threads: 1
+    private-address: 10.0.0.0/8
+    private-address: 172.16.0.0/12
+    private-address: 192.168.0.0/16
+    # work VPN domains resolve to private space - exempt them from
+    # rebinding protection or they SERVFAIL
+{% for domain in dns_private_domains %}
+    private-domain: {{ domain }}
+{% endfor %}
+
+    # Required for forward-tls-upstream below: verifies the DoT server's
+    # certificate against the system CA bundle.
+    tls-cert-bundle: /etc/ssl/certs/ca-certificates.crt
+
+# Outbound port 53 on this network is transparently intercepted - a query sent
+# to a root server (198.41.0.4) comes back with "recursion available" set and
+# real answer records, which no root server ever returns. Iterative resolution
+# from the root is therefore impossible: every hop is answered by the
+# interceptor instead of the real authoritative server. Names the interceptor
+# handles correctly resolved fine; the rest returned SERVFAIL, and DNSSEC
+# failed wherever its substituted answers carried no valid signatures. That
+# accounts for get.acme.sh, apache.jfrog.io, couchdb.apache.org,
+# production.cloudfront.docker.com and security.debian.org.
+#
+# DoT on 853 is not intercepted, so forwarding over TLS restores trustworthy
+# answers. The trade-off is deliberate: this resolver is no longer fully
+# recursive, it is a validating forwarder. Recursion through an interceptor was
+# never recursion in the first place.
+#
+# If the interception turns out to be UniFi Content Filtering (it hijacked
+# port 53 once before) and gets switched off, delete this forward-zone to go
+# back to full recursion. The previous config is in adguard.conf.bak-*.
+forward-zone:
+    name: "."
+    forward-tls-upstream: yes
+    forward-addr: 1.1.1.1@853#cloudflare-dns.com
+    forward-addr: 1.0.0.1@853#cloudflare-dns.com
+    forward-addr: 9.9.9.9@853#dns.quad9.net
+    forward-addr: 149.112.112.112@853#dns.quad9.net

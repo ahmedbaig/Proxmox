@@ -1,0 +1,16 @@
+[Unit]
+Description=Collect DNS flow-graph metrics for the node_exporter textfile collector
+Documentation=file:///usr/local/bin/dns-flow-metrics.py
+After=unbound.service AdGuardHome.service
+Wants=unbound.service
+
+[Service]
+Type=oneshot
+# Holds ADGUARD_AUTH. Absent or unreadable means the AdGuard legs are skipped
+# and dns_flow_collector_up goes to 0, rather than the unit failing silently.
+EnvironmentFile=-/etc/default/dns-flow-metrics
+ExecStart=/usr/local/bin/dns-flow-metrics.py
+User=root
+
+[Install]
+WantedBy=multi-user.target

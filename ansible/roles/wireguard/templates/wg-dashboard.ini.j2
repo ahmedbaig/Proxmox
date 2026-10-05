@@ -1,0 +1,62 @@
+[Account]
+username = {{ wgdashboard_username }}
+password = {{ wgdashboard_password_hash }}
+enable_totp = {{ wgdashboard_enable_totp | lower }}
+totp_verified = {{ wgdashboard_totp_verified | lower }}
+totp_key = {{ wgdashboard_totp_key }}
+
+[Server]
+wg_conf_path = /etc/wireguard
+awg_conf_path = /etc/amnezia/amneziawg
+app_prefix = 
+app_ip = 0.0.0.0
+app_port = {{ wgdashboard_port }}
+auth_req = true
+version = {{ wgdashboard_app_version }}
+dashboard_refresh_interval = 60000
+dashboard_peer_list_display = grid
+dashboard_sort = status
+dashboard_theme = dark
+dashboard_api_key = {{ wgdashboard_api_key }}
+dashboard_language = en-US
+
+[Peers]
+peer_global_dns = {{ wgdashboard_peer_dns }}
+peer_endpoint_allowed_ip = 0.0.0.0/0
+peer_display_mode = grid
+remote_endpoint = {{ wgdashboard_remote_endpoint }}
+peer_mtu = {{ wgdashboard_peer_mtu }}
+peer_keep_alive = {{ wgdashboard_peer_keep_alive }}
+
+[Other]
+welcome_session = false
+
+[Database]
+type = sqlite
+host = 
+port = 
+username = 
+password = 
+
+[Email]
+server = 
+port = 
+encryption = 
+username = 
+email_password = 
+authentication_required = true
+send_from = 
+email_template = 
+
+[OIDC]
+admin_enable = false
+client_enable = false
+
+[Clients]
+enable = true
+sign_up = true
+
+[WireGuardConfiguration]
+autostart = {{ wireguard_interface }}
+peer_tracking = false
+

@@ -1,0 +1,5 @@
+- name: Reconfigure gitlab
+  ansible.builtin.command: gitlab-ctl reconfigure
+
+- name: Reload nftables
+  ansible.builtin.command: nft -f /etc/nftables.conf

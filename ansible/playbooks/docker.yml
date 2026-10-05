@@ -1,0 +1,6 @@
+- name: Build and deploy host (CT 117)
+  hosts: docker
+  roles:
+    - common
+    - docker_host
+    - alloy

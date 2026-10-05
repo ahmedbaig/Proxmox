@@ -1,0 +1,7 @@
+# /etc/mysql/mariadb.conf.d/99-baig-tls.cnf
+# Offered, not enforced. No user has REQUIRE SSL, so existing connections are
+# unaffected; clients may add --ssl to get a validating certificate.
+[mysqld]
+ssl_cert = /etc/ssl/baig/baig.crt
+ssl_key  = /etc/ssl/baig/baig.key
+tls_version = TLSv1.2,TLSv1.3

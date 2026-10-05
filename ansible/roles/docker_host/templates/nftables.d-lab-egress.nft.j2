@@ -1,0 +1,54 @@
+# Egress policy for a build host: builds reach the internet, the running workload does not.
+#
+# - root and builders (dockerd, gitlab-runner, apt, git): LAN + TCP 80/443 to the internet
+# - uid "{{ docker_host_runtime_user }}" (long-running workload): LAN only ({{ docker_host_lan }})
+# - docker stack network {{ docker_host_stack_subnet }}: LAN only
+# - CI job and build containers (other docker bridges): LAN + TCP 80/443
+# - {{ docker_host_blocked }}: never, for anyone
+#
+# Audit:  nft list set inet lab_egress seen      every external destination actually used
+#         nft list set inet lab_egress dropped   every destination refused
+table inet lab_egress
+delete table inet lab_egress
+
+table inet lab_egress {
+  set seen {
+    type ipv4_addr . inet_service
+    flags dynamic,timeout
+    timeout 7d
+    counter
+  }
+  set dropped {
+    type ipv4_addr
+    flags dynamic,timeout
+    timeout 7d
+    counter
+  }
+
+  chain deny {
+    ip daddr != 0.0.0.0 update @dropped { ip daddr }
+    counter log prefix "lab-egress-drop " level info drop
+  }
+
+  chain output {
+    type filter hook output priority filter; policy drop;
+    oif "lo" accept
+    ct state established,related accept
+    ip daddr { {{ docker_host_lan }}, 127.0.0.0/8, 172.16.0.0/12 } accept
+    ip6 daddr ::1 accept
+    ip daddr {{ docker_host_blocked }} goto deny
+    meta skuid "{{ docker_host_runtime_user }}" goto deny
+    tcp dport { 80, 443 } update @seen { ip daddr . tcp dport } accept
+    goto deny
+  }
+
+  chain forward {
+    type filter hook forward priority filter - 10; policy accept;
+    ct state established,related accept
+    ip daddr {{ docker_host_blocked }} goto deny
+    ip saddr {{ docker_host_stack_subnet }} ip daddr != { {{ docker_host_lan }}, {{ docker_host_stack_subnet }} } goto deny
+    ip saddr 172.16.0.0/12 ip daddr { {{ docker_host_lan }}, 172.16.0.0/12 } accept
+    ip saddr 172.16.0.0/12 tcp dport { 80, 443 } update @seen { ip daddr . tcp dport } accept
+    ip saddr 172.16.0.0/12 goto deny
+  }
+}

@@ -1,0 +1,46 @@
+// nginx access and error logs — appended on the proxy container only.
+//
+// This is the highest-value source for security dashboards in the whole lab:
+// every HTTPS request to every service passes through here, so it is the one
+// place that sees probing, unexpected Host headers, and auth failures against
+// anything behind the wildcard cert.
+
+local.file_match "nginx" {
+  path_targets = [
+    { __path__ = "/var/log/nginx/access.log", log_type = "access" },
+    { __path__ = "/var/log/nginx/error.log",  log_type = "error"  },
+  ]
+}
+
+// job = "nginx" matters: the Logs & Security dashboard selects on
+// {job="nginx", log_type="..."}. Without it every panel on that board matches
+// nothing, because local.file_match only supplies log_type.
+loki.source.file "nginx" {
+  targets    = local.file_match.nginx.targets
+  forward_to = [loki.process.nginx.receiver]
+}
+
+// The combined log format is a single string; without parsing, status codes and
+// client addresses cannot be queried or graphed. status and method are promoted
+// to labels because dashboards filter on them; the client IP stays in the line
+// rather than becoming a label, since per-IP labels would explode cardinality.
+loki.process "nginx" {
+  forward_to = [loki.write.central.receiver]
+
+  stage.regex {
+    expression = `^(?P<remote_addr>\S+) \S+ (?P<remote_user>\S+) \[(?P<time_local>[^\]]+)\] "(?P<method>\S+) (?P<path>\S+) (?P<protocol>[^"]*)" (?P<status>\d{3}) (?P<body_bytes>\d+) "(?P<referer>[^"]*)" "(?P<user_agent>[^"]*)"`
+  }
+
+  stage.labels {
+    values = {
+      status = "",
+      method = "",
+    }
+  }
+
+  stage.static_labels {
+    values = {
+      job = "nginx",
+    }
+  }
+}

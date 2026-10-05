@@ -1,0 +1,55 @@
+// /etc/alloy/config.alloy  —  journald shipper
+//
+// Every Linux host and container forwards its systemd journal to Loki on the
+// metrics container. sshd, sudo, systemd unit failures and kernel messages all
+// land in the journal on Debian, so this one source covers the security-
+// relevant material without extra file scraping.
+//
+// {{ alloy_hostname }} is substituted at deploy time.
+
+logging {
+  level  = "warn"
+  format = "logfmt"
+}
+
+loki.write "central" {
+  endpoint {
+    url = "{{ alloy_loki_push_url }}"
+  }
+  external_labels = {
+    host = "{{ alloy_hostname }}",
+  }
+}
+
+// Journal metadata arrives as __journal_* labels and is dropped unless
+// explicitly promoted. unit and level are what make the logs queryable;
+// without them every line is an undifferentiated blob.
+loki.relabel "journal" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+  rule {
+    source_labels = ["__journal_syslog_identifier"]
+    target_label  = "ident"
+  }
+}
+
+loki.source.journal "journal" {
+  forward_to    = [loki.write.central.receiver]
+  relabel_rules = loki.relabel.journal.rules
+  max_age       = "24h"
+  labels        = {
+    job  = "systemd-journal",
+    host = "{{ alloy_hostname }}",
+  }
+}
+{% for extra in alloy_extras %}
+{% include "fragments/" ~ extra ~ ".alloy.j2" %}
+{% endfor %}

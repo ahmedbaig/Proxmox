@@ -1,0 +1,16 @@
+terraform {
+  required_version = ">= 1.7"
+
+  required_providers {
+    proxmox = {
+      source  = "bpg/proxmox"
+      version = "~> 0.115"
+    }
+    sops = {
+      source  = "carlpett/sops"
+      version = "~> 1.4"
+    }
+  }
+
+  backend "http" {}
+}

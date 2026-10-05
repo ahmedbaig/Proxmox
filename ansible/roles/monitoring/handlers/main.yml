@@ -1,0 +1,23 @@
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Reload prometheus
+  ansible.builtin.systemd_service:
+    name: prometheus
+    state: reloaded
+
+- name: Restart alertmanager
+  ansible.builtin.systemd_service:
+    name: prometheus-alertmanager
+    state: restarted
+
+- name: Restart blackbox exporter
+  ansible.builtin.systemd_service:
+    name: prometheus-blackbox-exporter
+    state: restarted
+
+- name: Restart loki
+  ansible.builtin.systemd_service:
+    name: loki
+    state: restarted

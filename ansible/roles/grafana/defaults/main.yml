@@ -1,0 +1,21 @@
+grafana_plugins:
+  - marcusolsson-treemap-panel
+  - netsage-sankey-panel
+
+grafana_dashboards:
+  - all-hosts.json
+  - service-health.json
+  - wireguard.json
+
+grafana_prometheus_url: http://10.10.20.5:9090
+grafana_loki_url: http://10.10.20.5:3100
+
+# Datasources and the extra dashboards were created through the UI and live in
+# grafana.db. Turning these on hands them to file provisioning instead (same
+# UIDs, so panels keep working); leave them off to keep the database as is.
+grafana_provision_datasources: false
+grafana_provision_extra_dashboards: false
+grafana_extra_dashboard_folders:
+  general: General
+  macmini: MacMini
+  workstation: Workstation

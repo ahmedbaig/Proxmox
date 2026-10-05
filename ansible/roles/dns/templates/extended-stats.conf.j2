@@ -1,0 +1,12 @@
+# Extended statistics for the DNS flow map.
+#
+# Without this, `unbound-control stats` reports 55 counters and none of them say
+# what was asked or how it was answered - no query types, no rcodes, and no
+# num.query.tls, which is the only direct evidence that the upstream leg really
+# is DNS-over-TLS rather than silently falling back to port 53. The ISP
+# intercepts plain 53, so that distinction matters here.
+#
+# Cost is a handful of extra counters per query. On ~20k queries the memory and
+# CPU difference is not measurable.
+server:
+    extended-statistics: yes

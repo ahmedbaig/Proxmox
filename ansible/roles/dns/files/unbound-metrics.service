@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect Unbound statistics for the node_exporter textfile collector
+Documentation=file:///usr/local/bin/unbound-metrics.py
+After=unbound.service
+Wants=unbound.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/unbound-metrics.py
+# unbound-control needs the server key pair, and ss needs to see every socket.
+User=root

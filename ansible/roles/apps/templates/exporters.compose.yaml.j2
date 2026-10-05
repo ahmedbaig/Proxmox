@@ -1,0 +1,42 @@
+# CT 113 — /opt/stacks/exporters/compose.yaml
+#
+# Exporters that have no usable Debian package, so they run as containers here
+# where Docker already exists. The Postgres, MariaDB and Redis exporters are
+# native on CT 112 instead, sitting next to the engines they watch.
+#
+# Debian ships a prometheus-mongodb-exporter, but it is from 2018 and cannot
+# talk to MongoDB 8 — hence Percona's image, which is what the Mac mini ran.
+
+services:
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    container_name: cadvisor
+    restart: always
+    ports:
+      - "8085:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    # No /dev/kmsg device mapping: it does not exist inside an unprivileged
+    # LXC, and requesting it makes the container fail to start outright.
+    # cAdvisor runs fine without it, losing only kernel event data.
+    command:
+      # Trim the default metric set: per-process and per-thread series are the
+      # bulk of cAdvisor's cardinality and none of the dashboards use them.
+      - --docker_only=true
+      - --housekeeping_interval=15s
+      - --disable_metrics=percpu,sched,process,hugetlb,referenced_memory,cpu_topology,resctrl
+
+  mongodb-exporter:
+    image: percona/mongodb_exporter:0.44
+    container_name: mongodb-exporter
+    restart: always
+    ports:
+      - "9217:9216"
+    command:
+      - --mongodb.uri=mongodb://admin:{{ apps_mongodb_exporter_password }}@10.10.20.4:27017/admin
+      - --collect-all
+      - --compatible-mode

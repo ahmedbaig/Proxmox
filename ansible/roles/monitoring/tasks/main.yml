@@ -1,0 +1,98 @@
+- name: Grafana apt repository (for Loki)
+  ansible.builtin.include_role:
+    name: alloy
+    tasks_from: apt_repo
+
+- name: Monitoring packages
+  ansible.builtin.apt:
+    name: "{{ monitoring_packages }}"
+    state: present
+
+- name: Prometheus config
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    owner: root
+    group: root
+    mode: "0644"
+    validate: promtool check config --syntax-only %s
+  notify: Reload prometheus
+
+- name: Prometheus rules directory
+  ansible.builtin.file:
+    path: /etc/prometheus/rules
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: "0755"
+
+- name: Prometheus alert rules
+  ansible.builtin.template:
+    src: "rules/{{ item.name }}.j2"
+    dest: "/etc/prometheus/rules/{{ item.name }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.owner }}"
+    mode: "0644"
+  loop: "{{ monitoring_rule_files }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Reload prometheus
+
+- name: Alertmanager config
+  ansible.builtin.template:
+    src: alertmanager.yml.j2
+    dest: /etc/prometheus/alertmanager.yml
+    owner: root
+    group: root
+    mode: "0644"
+  no_log: true
+  diff: false
+  notify: Restart alertmanager
+
+- name: Blackbox exporter modules
+  ansible.builtin.copy:
+    src: blackbox.yml
+    dest: /etc/prometheus/blackbox.yml
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart blackbox exporter
+
+- name: Blackbox exporter drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/prometheus-blackbox-exporter.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Blackbox exporter may open raw sockets for ICMP
+  ansible.builtin.copy:
+    src: blackbox-net-raw.conf
+    dest: /etc/systemd/system/prometheus-blackbox-exporter.service.d/net-raw.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart blackbox exporter
+
+- name: Loki config
+  ansible.builtin.copy:
+    src: loki-config.yml
+    dest: /etc/loki/config.yml
+    owner: root
+    group: root
+    mode: "0664"
+  notify: Restart loki
+
+- name: Monitoring services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - prometheus
+    - prometheus-alertmanager
+    - prometheus-blackbox-exporter
+    - loki

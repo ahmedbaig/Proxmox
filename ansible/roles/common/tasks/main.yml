@@ -1,0 +1,24 @@
+- name: Make apt use IPv4 only
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/99force-ipv4
+    content: "Acquire::ForceIPv4 \"true\";\n"
+    mode: "0644"
+  when: common_apt_force_ipv4
+
+- name: Install node exporter
+  ansible.builtin.apt:
+    name: prometheus-node-exporter
+    state: present
+
+- name: Set node exporter arguments
+  ansible.builtin.lineinfile:
+    path: /etc/default/prometheus-node-exporter
+    regexp: '^ARGS='
+    line: 'ARGS="{{ common_node_exporter_args }}"'
+  notify: Restart node exporter
+
+- name: Run node exporter
+  ansible.builtin.service:
+    name: prometheus-node-exporter
+    state: started
+    enabled: true

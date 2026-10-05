@@ -1,0 +1,8 @@
+docker_host_runtime_user: lab
+docker_host_lan: 10.10.0.0/16
+docker_host_stack_subnet: 172.30.0.0/16
+docker_host_blocked: 192.168.0.0/16
+docker_host_egress_file: /etc/nftables.d-lab-egress.nft
+gitlab_runner_version: 19.4.1-1
+gitlab_runner_repo_key_url: https://packages.gitlab.com/runner/gitlab-runner/gpgkey
+gitlab_runner_repo_keyring: /etc/apt/keyrings/runner_gitlab-runner-archive-keyring.gpg

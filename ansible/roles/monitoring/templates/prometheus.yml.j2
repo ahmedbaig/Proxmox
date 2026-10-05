@@ -1,0 +1,201 @@
+# /etc/prometheus/prometheus.yml  —  CT 114 (metrics, 10.10.20.5)
+#
+# Merged from the two Mac mini instances:
+#   prometheus       :9090  48 targets, all blackbox probes on *.macmini.ahmedhome.com
+#   prometheus-metrics :9190  9 targets, all down, all on *.macmini-proxy.ahmedhome.com
+# The second had nothing alive in it; its private jobs come from the secrets repo.
+#
+# Every legacy ahmedhome.com name has been replaced. Services that no longer
+# exist anywhere (registry 6452, sonarr, radarr, jackett, flaresolverr,
+# vpn-ui 5152, wiki) are deliberately not probed — probing the dead only
+# teaches you to ignore red.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    site: lidcombe
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['localhost:9093']
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+        labels: {host: metrics}
+
+  - job_name: alertmanager
+    static_configs:
+      - targets: ['localhost:9093']
+        labels: {host: metrics}
+
+  - job_name: loki
+    static_configs:
+      - targets: ['localhost:3100']
+        labels: {host: metrics}
+
+  - job_name: alloy
+    static_configs:
+      - targets: ['localhost:12345']
+        labels: {host: metrics}
+
+  # ---- hosts -------------------------------------------------------------
+  # node_exporter is installed on every container, the Proxmox host, and the
+  # Mac mini (brew service, already running).
+  - job_name: node
+    static_configs:
+      - targets: ['10.10.20.2:9100']
+        labels: {host: dns1,     role: dns,     kind: lxc}
+      - targets: ['10.10.20.3:9100']
+        labels: {host: proxy,    role: proxy,   kind: lxc}
+      - targets: ['10.10.20.4:9100']
+        labels: {host: db,       role: db,      kind: lxc}
+      - targets: ['10.10.20.5:9100']
+        labels: {host: metrics,  role: metrics, kind: lxc}
+      - targets: ['10.10.20.6:9100']
+        labels: {host: apps,     role: apps,    kind: lxc}
+      - targets: ['10.10.20.7:9100']
+        labels: {host: grafana,  role: grafana, kind: lxc}
+      - targets: ['10.10.50.20:9100']
+        labels: {host: vpn,      role: vpn,     kind: lxc}
+      - targets: ['10.10.50.30:9100']
+        labels: {host: docker, role: docker, kind: lxc}
+      - targets: ['10.10.50.40:9100']
+        labels: {host: gitlab,   role: ci,      kind: lxc}
+      - targets: ['10.10.50.41:9100']
+        labels: {host: registry, role: ci,      kind: lxc}
+      - targets: ['10.10.20.20:9100']
+        labels: {host: pve,      role: hypervisor, kind: host}
+      - targets: ['10.10.20.10:9100']
+        labels: {host: macmini,  role: media,   kind: host}
+
+  # ---- container metrics -------------------------------------------------
+  # cAdvisor runs only where Docker does: the apps container and the Mac mini.
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['10.10.20.6:8085']
+        labels: {host: apps,    kind: lxc}
+      # No cAdvisor on the Mac mini: on macOS, Docker runs inside a VM and
+      # cAdvisor cannot read host cgroups, so it reports nothing useful.
+      # Mac mini container visibility comes from dozzle and glances instead.
+
+  # ---- database exporters ------------------------------------------------
+  # These currently run on the Mac mini pointed at the Mac mini's databases.
+  # They move to the db container at cutover; the addresses below are where
+  # they will live, so the jobs are correct in advance.
+  - job_name: postgres
+    static_configs:
+      - targets: ['10.10.20.4:9187']
+        labels: {host: db}
+  - job_name: mariadb
+    static_configs:
+      - targets: ['10.10.20.4:9104']
+        labels: {host: db}
+  - job_name: redis
+    static_configs:
+      - targets: ['10.10.20.4:9121']
+        labels: {host: db}
+  - job_name: mongodb
+    static_configs:
+      # Percona's exporter runs as a container on the apps host; Debian's
+      # packaged mongodb-exporter is from 2018 and cannot speak to Mongo 8.
+      - targets: ['10.10.20.6:9217']
+        labels: {host: db}
+
+  # ---- AdGuard -----------------------------------------------------------
+  # Runs as a container on the apps host: AdGuard Home has no native /metrics
+  # endpoint and there is no Debian package. The Mac mini's copy had been stuck
+  # in SYN_SENT against 192.168.0.117 since the VLAN rebuild.
+  - job_name: adguard
+    static_configs:
+      - targets: ['10.10.20.6:9617']
+        labels: {host: dns1}
+
+  # ---- blackbox: HTTPS reachability AND certificate expiry ---------------
+  # probe_ssl_earliest_cert_expiry from these probes is what drives the
+  # certificate expiry alerts in rules/certs.yml. No separate cert-watching
+  # service is needed; blackbox already measures it on every scrape.
+  - job_name: blackbox-http
+    metrics_path: /probe
+    params:
+      module: [http_2xx_or_auth]
+    static_configs:
+      - targets:
+{% for target in monitoring_blackbox_http_targets + monitoring_private_blackbox_http_targets %}
+          - {{ target }}
+{% endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+
+{{ monitoring_private_scrape_configs.rstrip() ~ '\n\n' if monitoring_private_scrape_configs else '' }}  # ---- blackbox: TCP ----------------------------------------------------
+  # Database engines and other non-HTTP listeners. Answers "is the port
+  # accepting connections", which is what the Infrastructure Overview
+  # dashboard's TCP panels graph.
+  - job_name: blackbox-tcp
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+          - db.servers.baig.network:5432       # postgres
+          - db.servers.baig.network:3306       # mariadb
+          - db.servers.baig.network:27017      # mongodb
+          - db.servers.baig.network:6379       # redis
+          - db.servers.baig.network:5984       # couchdb
+          - 10.10.20.20:8006                  # proxmox api
+          - 10.10.20.2:53                      # dns1
+          # WireGuard is UDP-only; a TCP connect probe can never succeed against
+          # it. Liveness comes from wg handshake counters instead.
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+
+  # ---- blackbox: ICMP ----------------------------------------------------
+
+  # ---- blackbox: ICMP ----------------------------------------------------
+  # Probed via the blackbox exporter on the PROXMOX HOST, not the one on this
+  # container: an unprivileged LXC cannot open raw sockets, and granting
+  # CAP_NET_RAW does not change that -- every ICMP probe returned
+  # probe_success 0 until this moved to the host.
+  #
+  # Main Net targets other than the gateway are omitted: from the Servers VLAN
+  # only 192.168.0.1 answers. The Pi, the AP and the GS724T are blocked by
+  # firewall zoning (Trusted -> Internal exists, Servers -> Internal does not),
+  # so probing them from here would report a permanent, meaningless outage.
+  - job_name: blackbox-icmp
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+          - 10.10.20.1      # UX7 gateway, Servers
+          - 192.168.0.1     # UX7 gateway, Main Net
+          - 10.10.20.10     # Mac mini
+          - 10.10.20.20     # Proxmox host
+          # 10.10.10.10 (MacBook) omitted for the same reason as the Main Net
+          # hosts: the firewall has Trusted -> Servers but not Servers ->
+          # Trusted, so ICMP from here can never succeed. The MacBook is
+          # plainly alive -- it is the busiest client on dns1 -- so alerting on
+          # an unreachable ping would be pure noise.
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 10.10.20.20:9115

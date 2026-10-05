@@ -1,0 +1,11 @@
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Restart registry
+  ansible.builtin.systemd_service:
+    name: docker-registry
+    state: restarted
+
+- name: Recreate registry UI
+  ansible.builtin.command: /opt/registry-ui/run.sh

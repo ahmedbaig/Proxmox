@@ -1,0 +1,19 @@
+- name: Certificate access group
+  ansible.builtin.group:
+    name: "{{ db_cert_group }}"
+    system: false
+
+- name: Database service users can read the wildcard certificate
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: "{{ db_cert_group }}"
+    append: true
+  loop: "{{ db_cert_members }}"
+
+- name: Certificate directory
+  ansible.builtin.file:
+    path: /etc/ssl/baig
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"

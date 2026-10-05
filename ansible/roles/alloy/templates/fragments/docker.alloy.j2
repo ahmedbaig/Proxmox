@@ -1,0 +1,38 @@
+// Docker log collection — appended to the base config on hosts running Docker
+// (the apps container). Container stdout/stderr is otherwise only visible via
+// `docker logs`, which is per-host and unsearchable.
+
+discovery.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "30s"
+}
+
+// Docker container names arrive with a leading slash, which makes every Loki
+// query need an escape. Stripped here instead.
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "stack"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  forward_to = [loki.write.central.receiver]
+  labels     = {
+    job  = "docker",
+    host = "{{ alloy_hostname }}",
+  }
+}

@@ -1,0 +1,12 @@
+- name: Reverse proxy (nginx + acme.sh)
+  hosts: proxy
+  pre_tasks:
+    - name: Load private vhosts
+      community.sops.load_vars:
+        file: "{{ secrets_dir }}/ansible/proxy-private.sops.yaml"
+      when: (secrets_dir ~ '/ansible/proxy-private.sops.yaml') is file
+      no_log: true
+  roles:
+    - common
+    - proxy
+    - alloy

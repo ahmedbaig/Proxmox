@@ -1,0 +1,76 @@
+{% raw %}# /etc/prometheus/rules/certs.yml  —  certificate expiry and service health
+#
+# Certificate monitoring does not need its own service. Every HTTPS blackbox
+# probe already reports probe_ssl_earliest_cert_expiry as a unix timestamp, so
+# the expiry watch is a rule over data Prometheus is collecting anyway.
+#
+# The wildcard *.baig.network renews via acme.sh DNS-01 against Cloudflare.
+# The 21-day warning gives three weeks to notice a renewal that silently
+# stopped working — which nearly happened: api.cloudflare.com and
+# acme-v02.api.letsencrypt.org were both unresolvable until the DNS
+# interception was worked around, and nothing would have reported it.
+
+groups:
+  - name: certificates
+    rules:
+      - alert: CertificateExpiringSoon
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 21
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "TLS certificate for {{ $labels.instance }} expires in {{ $value | printf \"%.0f\" }} days"
+          description: "Renewal runs via acme.sh DNS-01 against Cloudflare on the proxy container. Check `acme.sh --list` and the renewal cron on CT 111."
+
+      - alert: CertificateExpiringCritical
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 7
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "TLS certificate for {{ $labels.instance }} expires in {{ $value | printf \"%.0f\" }} days"
+
+      # A "certificate invalid" rule keyed on probe_success was removed: it
+      # fired on any failing HTTPS probe regardless of cause, and a 404 from
+      # Loki's root path was enough to trip it. Availability is ServiceDown's
+      # job; expiry is covered by the two rules above.
+
+  - name: availability
+    rules:
+      - alert: ServiceDown
+        expr: probe_success == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has failed its probe for 10 minutes"
+
+      - alert: ExporterDown
+        # Jobs for a development stack on the MacBook are excluded (selector kept
+        # in the private secrets repo): they are legitimately down whenever it is
+        # off. They stay scraped so the dashboards work, but they do not alert.
+        expr: up{% endraw %}{{ monitoring_exporter_down_selector }}{% raw %} == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Scrape target {{ $labels.job }} on {{ $labels.instance }} is down"
+
+  - name: capacity
+    rules:
+      - alert: DiskFillingUp
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes) < 0.10
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} {{ $labels.mountpoint }} below 10% free"
+
+      - alert: MemoryPressure
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) < 0.10
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has less than 10% memory available"
+{% endraw %}

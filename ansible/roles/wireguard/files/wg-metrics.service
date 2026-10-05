@@ -1,0 +1,7 @@
+[Unit]
+Description=Collect WireGuard peer metrics for node_exporter
+After=wg-quick@wg0.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/bin/wg-metrics.py

@@ -1,0 +1,11 @@
+- name: Metrics (CT 114) - Prometheus, Alertmanager, Loki, blackbox
+  hosts: metrics
+  pre_tasks:
+    - name: Load secrets
+      community.sops.load_vars:
+        file: "{{ secrets_dir }}/ansible/monitoring.sops.yaml"
+      no_log: true
+  roles:
+    - common
+    - monitoring
+    - alloy

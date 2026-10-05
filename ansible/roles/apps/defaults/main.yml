@@ -1,0 +1,18 @@
+apps_stacks_dir: /opt/stacks
+apps_data_dir: /opt/data
+
+apps_stacks:
+  - { name: apps, template: apps.compose.yaml.j2 }
+  - { name: exporters, template: exporters.compose.yaml.j2 }
+  - { name: adguard-exporter, template: adguard-exporter.compose.yaml.j2 }
+
+apps_data_dirs:
+  - yamtrack
+  - webhook-tester
+
+apps_docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin

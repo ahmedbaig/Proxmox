@@ -1,0 +1,44 @@
+- name: Restart postgresql
+  ansible.builtin.service:
+    name: "{{ db_pg_service }}"
+    state: restarted
+
+- name: Reload postgresql
+  ansible.builtin.service:
+    name: "{{ db_pg_service }}"
+    state: reloaded
+
+- name: Restart mariadb
+  ansible.builtin.service:
+    name: mariadb
+    state: restarted
+
+- name: Restart mongod
+  ansible.builtin.service:
+    name: mongod
+    state: restarted
+
+- name: Restart redis
+  ansible.builtin.service:
+    name: redis-server
+    state: restarted
+
+- name: Restart couchdb
+  ansible.builtin.service:
+    name: couchdb
+    state: restarted
+
+- name: Restart prometheus-postgres-exporter
+  ansible.builtin.service:
+    name: prometheus-postgres-exporter
+    state: restarted
+
+- name: Restart prometheus-mysqld-exporter
+  ansible.builtin.service:
+    name: prometheus-mysqld-exporter
+    state: restarted
+
+- name: Restart prometheus-redis-exporter
+  ansible.builtin.service:
+    name: prometheus-redis-exporter
+    state: restarted

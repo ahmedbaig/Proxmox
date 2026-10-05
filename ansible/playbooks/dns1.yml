@@ -1,0 +1,12 @@
+- name: DNS (AdGuard Home + Unbound)
+  hosts: dns1
+  pre_tasks:
+    - name: Load secrets
+      community.sops.load_vars:
+        file: "{{ secrets_dir }}/ansible/dns.sops.yaml"
+      when: (secrets_dir ~ '/ansible/dns.sops.yaml') is file
+      no_log: true
+  roles:
+    - common
+    - dns
+    - alloy

@@ -1,0 +1,26 @@
+
+# Package-introduced administrative user
+[admins]
+admin = {{ db_couchdb_admin_password_hash }}
+
+[couchdb]
+uuid = {{ db_couchdb_uuid }}
+single_node = true
+max_document_size = 50000000
+
+[chttpd]
+max_http_request_size = 4294967296
+require_valid_user = true
+enable_cors = true
+
+[chttpd_auth]
+require_valid_user = true
+authentication_redirect = /_utils/session.html
+
+[httpd]
+WWW-Authenticate = Basic realm="couchdb"
+enable_cors = true
+
+[cors]
+credentials = true
+origins = app://obsidian.md,capacitor://localhost,http://localhost

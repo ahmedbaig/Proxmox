@@ -1,0 +1,10 @@
+- import_playbook: dns1.yml
+- import_playbook: proxy.yml
+- import_playbook: db.yml
+- import_playbook: apps.yml
+- import_playbook: metrics.yml
+- import_playbook: grafana.yml
+- import_playbook: vpn.yml
+- import_playbook: docker.yml
+- import_playbook: gitlab.yml
+- import_playbook: registry.yml

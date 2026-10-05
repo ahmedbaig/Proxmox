@@ -1,0 +1,71 @@
+- name: Docker engine
+  ansible.builtin.apt:
+    name: docker.io
+    state: present
+
+- name: Docker on boot
+  ansible.builtin.systemd_service:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Apt keyring directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: GitLab Runner package signing key
+  ansible.builtin.shell: curl -fsSL {{ gitlab_runner_repo_key_url }} | gpg --dearmor > {{ gitlab_runner_repo_keyring }}
+  args:
+    creates: "{{ gitlab_runner_repo_keyring }}"
+
+- name: GitLab Runner package repository
+  ansible.builtin.template:
+    src: runner_gitlab-runner.list.j2
+    dest: /etc/apt/sources.list.d/runner_gitlab-runner.list
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: GitLab Runner
+  ansible.builtin.apt:
+    name: gitlab-runner={{ gitlab_runner_version }}
+    state: present
+
+- name: Runner may use Docker
+  ansible.builtin.user:
+    name: gitlab-runner
+    groups: docker
+    append: true
+
+- name: Runtime user (LAN-only egress)
+  ansible.builtin.user:
+    name: "{{ docker_host_runtime_user }}"
+    shell: /bin/bash
+
+- name: Egress policy
+  ansible.builtin.template:
+    src: nftables.d-lab-egress.nft.j2
+    dest: "{{ docker_host_egress_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload nftables
+
+- name: nftables main config
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Reload nftables
+
+- name: Services on boot
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+  loop:
+    - nftables
+    - gitlab-runner

@@ -1,0 +1,34 @@
+- name: MariaDB configuration
+  ansible.builtin.copy:
+    src: "mariadb/{{ item }}"
+    dest: "/etc/mysql/mariadb.conf.d/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - 99-baig-tls.cnf
+    - 99-baig-tuning.cnf
+  notify: Restart mariadb
+
+- name: Existing MariaDB accounts
+  ansible.builtin.command: mariadb -N -e "select concat(user, '@', host) from mysql.user"
+  environment:
+    MYSQL_PWD: "{{ db_mariadb_root_password }}"
+  register: db_maria_accounts
+  changed_when: false
+  check_mode: false
+  no_log: true
+
+- name: MariaDB accounts
+  ansible.builtin.command:
+    cmd: mariadb -N
+    stdin: |
+      CREATE USER '{{ item.user }}'@'{{ item.host }}' IDENTIFIED BY '{{ lookup('ansible.builtin.vars', item.password_var) }}' {{ item.options | default('') }};
+      GRANT {{ item.grant }} TO '{{ item.user }}'@'{{ item.host }}'{{ ' WITH GRANT OPTION' if item.grant_option | default(false) else '' }};
+      {% if item.extra_grant is defined %}GRANT {{ item.extra_grant }} TO '{{ item.user }}'@'{{ item.host }}';{% endif %}
+      FLUSH PRIVILEGES;
+  environment:
+    MYSQL_PWD: "{{ db_mariadb_root_password }}"
+  loop: "{{ db_mariadb_users }}"
+  when: (item.user ~ '@' ~ item.host) not in (db_maria_accounts.stdout_lines | default([]))
+  no_log: true

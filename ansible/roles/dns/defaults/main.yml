@@ -1,0 +1,10 @@
+dns_adguard_dir: /opt/AdGuardHome
+dns_adguard_url: https://static.adguard.com/adguardhome/release/AdGuardHome_linux_amd64.tar.gz
+dns_unbound_confs:
+  - adguard.conf
+  - extended-stats.conf
+dns_metric_jobs:
+  - dns-flow-metrics
+  - unbound-metrics
+dns_textfile_dir: /var/lib/prometheus/node-exporter
+dns_private_domains: []

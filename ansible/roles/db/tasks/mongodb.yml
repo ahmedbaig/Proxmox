@@ -1,0 +1,28 @@
+- name: MongoDB configuration
+  ansible.builtin.copy:
+    src: mongodb/mongod.conf
+    dest: /etc/mongod.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart mongod
+
+- name: MongoDB admin account present
+  ansible.builtin.command: >-
+    mongosh --quiet --host 127.0.0.1 -u admin -p "{{ db_mongodb_admin_password }}"
+    --authenticationDatabase admin
+    --eval 'print(db.getSiblingDB("admin").getUser("admin") ? "present" : "missing")'
+  register: db_mongo_admin
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  no_log: true
+
+- name: MongoDB admin account (localhost exception, before any user exists)
+  ansible.builtin.command:
+    cmd: mongosh --quiet --host 127.0.0.1
+    stdin: |
+      db = db.getSiblingDB("admin");
+      db.createUser({ user: "admin", pwd: "{{ db_mongodb_admin_password }}", roles: [{ role: "root", db: "admin" }] });
+  when: "'present' not in db_mongo_admin.stdout | default('')"
+  no_log: true

@@ -1,0 +1,14 @@
+#!/bin/sh
+# Web UI for the lab registry (joxit/docker-registry-ui), port 8080, proxied by CT 111 as registry-ui.baig.network.
+# Browsing and deleting use the registry login (user lab); deleted layers are freed by registry-gc.timer (Sun 04:00).
+docker rm -f registry-ui 2>/dev/null
+exec docker run -d --name registry-ui --restart unless-stopped -p {{ registry_ui_port }}:80 \
+  -e SINGLE_REGISTRY=true \
+  -e REGISTRY_TITLE="{{ registry_ui_title }}" \
+  -e NGINX_PROXY_PASS_URL=https://{{ registry_host }} \
+  -e DELETE_IMAGES=true \
+  -e SHOW_CONTENT_DIGEST=true \
+  -e SHOW_CATALOG_NB_TAGS=true \
+  -e CATALOG_ELEMENTS_LIMIT=1000 \
+  -e TAGLIST_PAGE_SIZE=100 \
+  {{ registry_ui_image }}

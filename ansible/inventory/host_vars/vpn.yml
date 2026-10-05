@@ -1,0 +1,1 @@
+common_node_exporter_args: "--collector.textfile.directory=/var/lib/prometheus/node-exporter"

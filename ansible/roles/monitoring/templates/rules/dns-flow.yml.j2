@@ -1,0 +1,52 @@
+{% raw %}# Recording rules that reshape the DNS flow metrics into exactly the field set
+# Grafana's Node Graph panel expects.
+#
+# The panel identifies its two frames by field NAME: a frame carrying `id` is the
+# nodes frame, and one carrying `id` plus `source` and `target` is the edges
+# frame. Any extra field is rendered as an unwanted column or confuses the
+# detection, so the usual approach is a long `organize` transformation listing
+# every label to exclude -- which breaks silently the next time a label is added
+# to the scrape config. That is exactly how the stray kind/role columns appeared
+# on the speedtest table.
+#
+# Dropping the labels here instead means the panel needs one rename (Value ->
+# mainstat) and nothing else, and a new scrape label cannot leak into the view.
+#
+# The raw dns_flow_* metrics keep every label and are what the detail panels and
+# ad-hoc queries use.
+#
+# Note `exported_kind`. The collector emits a `kind` label and the scrape config
+# also attaches one, so Prometheus renames the collector's to `exported_kind` to
+# resolve the collision. Dropping `kind` alone leaves it behind, which is why the
+# node rule names both.
+groups:
+  - name: dns-flow-graph
+    interval: 30s
+    rules:
+      - record: dns_flow_node
+        expr: |
+          max without(instance, job, host, site, role, kind, exported_kind, node) (dns_flow_node_queries)
+
+      - record: dns_flow_edge
+        expr: |
+          max without(instance, job, host, site, role, kind, src, dst, src_kind, dst_kind, basis) (dns_flow_edge_queries)
+
+      # The Sankey reads stage1/stage2/stage3 as its levels and needs no other
+      # string field, or the extra column is treated as a fourth level.
+      - record: dns_flow_path
+        expr: |
+          max without(instance, job, host, site, role, kind) (dns_flow_path_queries)
+
+      # Queries that left the network without encryption. The whole point of the
+      # Unbound-over-DoT setup is that this stays at zero, and it does not: the
+      # UniFi gateways are configured as AdGuard upstreams, so anything AdGuard
+      # sends them goes out over plain port 53 -- on a line whose ISP is known to
+      # intercept port 53.
+      - record: dns_queries_leaving_unencrypted
+        expr: |
+          sum(dns_flow_edge_queries{dst="Internet (plain :53)"}) or vector(0)
+
+      - record: dns_queries_leaving_encrypted
+        expr: |
+          sum(dns_flow_edge_queries{dst="Internet (DoT :853)"}) or vector(0)
+{% endraw %}

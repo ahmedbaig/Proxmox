@@ -1,0 +1,6 @@
+domain: baig.network
+proxmox_host: 10.10.20.20
+lan_gateway_servers: 10.10.20.1
+lan_gateway_lab: 10.10.50.1
+dns_server: 10.10.20.2
+secrets_dir: "{{ lookup('ansible.builtin.env', 'HOMELAB_SECRETS') | default(inventory_dir ~ '/../../../homelab-secrets', true) }}"

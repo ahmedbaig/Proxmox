@@ -1,0 +1,81 @@
+- name: Docker signing key on disk
+  ansible.builtin.stat:
+    path: /etc/apt/keyrings/docker.asc
+  register: apps_docker_key
+
+- name: Docker signing key
+  when: not apps_docker_key.stat.exists
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/debian/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Docker repository
+  ansible.builtin.copy:
+    src: docker.list
+    dest: /etc/apt/sources.list.d/docker.list
+    owner: root
+    group: root
+    mode: "0644"
+  register: apps_docker_repo
+
+- name: Refresh apt after repository change
+  ansible.builtin.apt:
+    update_cache: true
+  when: apps_docker_repo is changed
+
+- name: Docker packages
+  ansible.builtin.apt:
+    name: "{{ apps_docker_packages }}"
+    state: present
+
+- name: Docker running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Stack directories
+  ansible.builtin.file:
+    path: "{{ apps_stacks_dir }}/{{ item.name }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ apps_stacks }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Data directories (bind mounts, never named volumes)
+  ansible.builtin.file:
+    path: "{{ apps_data_dir }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ apps_data_dirs }}"
+
+- name: Compose files
+  ansible.builtin.template:
+    src: "{{ item.template }}"
+    dest: "{{ apps_stacks_dir }}/{{ item.name }}/compose.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ apps_stacks }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: apps_compose_files
+  no_log: true
+  diff: false
+
+- name: Bring changed stacks up
+  ansible.builtin.command:
+    cmd: docker compose up -d --remove-orphans
+    chdir: "{{ apps_stacks_dir }}/{{ item.item.name }}"
+  loop: "{{ apps_compose_files.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: item is changed

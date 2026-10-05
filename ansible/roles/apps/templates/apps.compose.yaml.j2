@@ -1,0 +1,67 @@
+# CT 113 — apps at 10.10.20.6
+# /opt/stacks/apps/compose.yaml
+#
+# Three services moved off the Mac mini. Wiki.js is not among them: its content
+# was exported to an Obsidian vault and it is being retired. Portainer, the
+# Docker registry, audiobookshelf, metabase and mongo-express are being dropped.
+# Transmission, Stremio and Plex stay on the Mac mini.
+#
+# Data lives on bind mounts under /opt/data/, not named volumes — the Mac mini's
+# anonymous volumes are how 6 GB of database data ended up unlabelled and one
+# `docker compose down -v` from deletion.
+
+services:
+  yamtrack:
+    image: ghcr.io/fuzzygrim/yamtrack:latest
+    container_name: yamtrack
+    restart: always
+    ports:
+      - "8084:8000"
+    environment:
+      SECRET: "{{ apps_yamtrack_secret }}"
+      # yamtrack 0.26 reads DB_HOST/DB_NAME/DB_USER/DB_PASSWORD/DB_PORT and
+      # silently falls back to SQLite inside the container when DB_HOST is
+      # unset. DATABASE_URL is dead config in this version — which is how the
+      # Mac mini instance accumulated 8,757 tracked items in an unmounted
+      # /yamtrack/db/db.sqlite3, one `docker rm` from oblivion, while its
+      # Postgres database sat empty.
+      DB_HOST: "10.10.20.4"
+      DB_PORT: "5432"
+      DB_NAME: "yamtrack"
+      DB_USER: "postgres"
+      DB_PASSWORD: "{{ apps_yamtrack_db_password }}"
+      REDIS_URL: "redis://10.10.20.4:6379"
+      # Source used the legacy ahmedhome.com name.
+      URLS: "https://yamtrack.baig.network"
+      TMDB_API: "{{ apps_tmdb_api_key }}"
+      MAL_API: ""
+      IGDB_ID: ""
+      IGDB_SECRET: "{{ apps_igdb_secret }}"
+      REGISTRATION: "true"
+    volumes:
+      - /opt/data/yamtrack:/data
+
+  webhook-tester:
+    image: ghcr.io/tarampampam/webhook-tester:2
+    container_name: webhook-tester
+    restart: always
+    ports:
+      - "8083:8080"
+    environment:
+      LOG_FORMAT: json
+      LOG_LEVEL: info
+      FS_STORAGE_DIR: /data
+    # Source declared FS_STORAGE_DIR=/data but mounted nothing, so every
+    # captured request was lost whenever the container was recreated.
+    volumes:
+      - /opt/data/webhook-tester:/data
+
+  mailcatcher:
+    image: dockage/mailcatcher:0.9.0
+    container_name: mailcatcher
+    restart: always
+    ports:
+      - "1080:1080"   # web UI
+      - "1025:1025"   # SMTP
+    # Deliberately stateless — mailcatcher holds captured mail in memory and is
+    # meant to be disposable. No volume, matching the source.
