@@ -213,6 +213,43 @@ because of a `*.main.baig.network → 10.10.20.1` rewrite, then returned the
 proxy because of `*.baig.network`. Fix was to delete the `main` entries and let
 exact host rewrites do the work.
 
+## Our own allow and block lists
+
+Hand-written rules live in git, not in AdGuard's **Custom filtering rules** box,
+which is kept empty. A block only belongs here if no subscribed list already
+blocks the name; `check_host` it first. (78 of the original 115 were redundant.)
+
+| File | Rules | Subscribed as |
+|---|---|---|
+| `ansible/roles/dns/templates/adguard-lists/baig-allow.txt.j2` | `@@` exceptions; work and personal rules come from `dns_adguard_work_allow` / `dns_adguard_personal_allow` in `homelab-secrets/ansible/dns.sops.yaml` | normal filter **baig allow** |
+| `ansible/roles/dns/templates/adguard-lists/baig-block.txt.j2` | blocks the subscribed lists miss | normal filter **baig block** |
+
+The dns role renders them to `/opt/AdGuardHome/data/userfilters/` (the only path
+`filtering.safe_fs_patterns` allows) and calls `/control/filtering/refresh`. To
+change a rule: edit the file, then `ansible-playbook playbooks/dns1.yml`.
+
+> [!IMPORTANT]
+> **Both are normal filters, not AdGuard "allowlists".** An allowlist
+> (`whitelist_filters`) is checked before the whole block engine, so it beats
+> even `$important` blocks. As a normal filter, `baig-allow.txt` follows the usual
+> precedence and the `$important` blocks in `baig-block.txt` can carve exceptions
+> out of it.
+
+`$important` on a block means "this wins over an allow rule". Without it, these
+13 blocks did nothing for months:
+
+- **Apple and Xiaomi telemetry:** overridden by our own `@@||apple.com^` and
+  `@@||xiaomi.com^`.
+- **`ad.doubleclick.net` and `adservice.google.com`:** overridden by
+  `@@||ad.doubleclick.net^` and `@@||adservice.google.*^` in *HaGeZi's
+  Allowlist Referral*.
+
+> [!NOTE]
+> A refresh re-downloads every list and rebuilds the whole engine. That takes
+> about 4 minutes, and AdGuard peaks near the CT's 8 GB while it runs. The old
+> rules keep answering until the rebuild finishes. Use `check_host` (below) to
+> see when the new ones are live.
+
 ## `$important` breaks an allowlist rule
 
 A blocklist was returning `0.0.0.0` for `ahmedpi.ddns.net` — matched by

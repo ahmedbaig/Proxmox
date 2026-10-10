@@ -1,0 +1,67 @@
+! Title: baig block
+! Description: Hand-written blocks that the subscribed lists do not already
+!   cover. $important wherever an allow rule (ours or a subscribed list's) would
+!   otherwise win; without it these silently did nothing.
+! Before adding a rule, check_host the name: if a subscribed list already blocks
+!   it, it does not belong here.
+! Managed by ansible/roles/dns. Edit here, not in the AdGuard UI.
+
+! === Ads ===
+! Doubleclick — $important beats HaGeZi Referral's @@||ad.doubleclick.net^
+||doubleclick.net^$important
+! Google Ads — $important beats HaGeZi Referral's @@||adservice.google.*^
+||pagead2.googleadservices.com^
+||adservice.google.com^$important
+! Adcolony
+||ads30.adcolony.com^
+! Misc
+||api.panxo.ai^$important
+||trackcmp.net^$important
+||cdn.ziffstatic.com^$important
+
+! === Analytics and session recording ===
+! Hotjar
+||adm.hotjar.com^
+||identify.hotjar.com^
+||insights.hotjar.com^
+||script.hotjar.com^
+||surveys.hotjar.com^
+||careers.hotjar.com^
+
+! === Error and crash reporting ===
+! Bugsnag
+||notify.bugsnag.com^
+||api.bugsnag.com^
+||app.bugsnag.com^
+! Sentry (sentry.io itself is allowed for work)
+||app.getsentry.com^
+
+! === Social and ad network trackers ===
+||ads.tiktok.com^
+||static.ads-twitter.com^
+||partnerads.ysm.yahoo.com^
+||webview.unityads.unity3d.com^
+||config.unityads.unity3d.com^
+
+! === Device maker telemetry ===
+! Apple — $important beats @@||apple.com^ in baig-allow.txt
+||iadsdk.apple.com^$important
+||api-adservices.apple.com^$important
+||books-analytics-events.apple.com^$important
+||weather-analytics-events.apple.com^$important
+||notes-analytics-events.apple.com^$important
+! Xiaomi — $important beats @@||xiaomi.com^ in baig-allow.txt
+||api.ad.xiaomi.com^$important
+||sdkconfig.ad.xiaomi.com^$important
+||sdkconfig.ad.intl.xiaomi.com^$important
+||data.mistat.xiaomi.com^$important
+||data.mistat.india.xiaomi.com^$important
+||data.mistat.rus.xiaomi.com^$important
+! Huawei
+||metrics2.data.hicloud.com^
+
+! === iCloud Private Relay network opt-out ===
+! Apple's documented signal; devices show "Private Relay unavailable" here.
+||mask.icloud.com^
+||mask-h2.icloud.com^
+||au-aest.exp.fastly-masque.net^$important

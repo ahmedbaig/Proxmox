@@ -1,0 +1,41 @@
+! Title: baig allow
+! Description: Hand-written exceptions. Subscribed as a normal filter, not an
+!   AdGuard "allowlist": allowlists are checked before every block rule and would
+!   beat the $important blocks in baig-block.txt.
+! Managed by ansible/roles/dns. Edit here, not in the AdGuard UI.
+
+! === Work ===
+{% for rule in dns_adguard_work_allow %}
+{{ rule }}
+{% endfor %}
+
+! === Monitoring and error reporting ===
+@@||sentry.io^$important
+@@||reload.getsentry.net^
+@@||s1.sentry-cdn.com^
+@@||datadoghq.com^
+@@||datadoghq.eu^
+
+! === Homelab and tooling ===
+@@||ahmedpi.ddns.net^
+@@||www.noip.com^$important
+@@||my.noip.com^$important
+@@||acme.sh^$important
+@@||keys.openpgp.org^$important
+@@||ipify.org^
+@@||ifconfig.me^$important
+@@||obsidian.md^$important
+@@||beamup.dev^
+
+! === Apps and sites ===
+@@||apple.com^
+@@||xiaomi.com^
+@@||imdb.com^$important
+@@||loc.nine.com.au^$important
+@@||api2.branch.io^$important
+@@||sdk.iad-05.braze.com^$important
+@@||px-cloud.net^
+@@||wilsonparking.com.au^
+{% for rule in dns_adguard_personal_allow %}
+{{ rule }}
+{% endfor %}

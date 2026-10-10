@@ -44,6 +44,20 @@
     state: started
     enabled: true
 
+- name: Ensure AdGuard user filter directory
+  ansible.builtin.file:
+    path: "{{ dns_adguard_dir }}/data/userfilters"
+    state: directory
+    mode: "0700"
+
+- name: Install baig allow and block lists
+  ansible.builtin.template:
+    src: "adguard-lists/{{ item }}.j2"
+    dest: "{{ dns_adguard_dir }}/data/userfilters/{{ item }}"
+    mode: "0600"
+  loop: "{{ dns_adguard_lists }}"
+  notify: Refresh AdGuard lists
+
 - name: Install metric collectors
   ansible.builtin.copy:
     src: "{{ item }}.py"

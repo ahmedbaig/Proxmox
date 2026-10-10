@@ -1,5 +1,8 @@
 dns_adguard_dir: /opt/AdGuardHome
 dns_adguard_url: https://static.adguard.com/adguardhome/release/AdGuardHome_linux_amd64.tar.gz
+dns_adguard_lists:
+  - baig-allow.txt
+  - baig-block.txt
 dns_unbound_confs:
   - adguard.conf
   - extended-stats.conf
@@ -8,3 +11,5 @@ dns_metric_jobs:
   - unbound-metrics
 dns_textfile_dir: /var/lib/prometheus/node-exporter
 dns_private_domains: []
+dns_adguard_work_allow: []
+dns_adguard_personal_allow: []

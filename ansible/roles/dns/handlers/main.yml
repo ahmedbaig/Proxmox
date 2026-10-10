@@ -11,3 +11,13 @@
   ansible.builtin.service:
     name: AdGuardHome
     state: restarted
+
+# Re-reads every subscribed list, including the local baig-*.txt files.
+# Uses the dns-flow-metrics credentials file so the secret stays off the command line.
+- name: Refresh AdGuard lists
+  ansible.builtin.shell: |
+    . /etc/default/dns-flow-metrics
+    curl -fsS -X POST -H "Authorization: Basic $ADGUARD_AUTH" \
+      -H 'Content-Type: application/json' -d '{"whitelist":false}' \
+      http://127.0.0.1/control/filtering/refresh
+  changed_when: true
