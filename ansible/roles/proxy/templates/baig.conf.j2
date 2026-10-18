@@ -107,6 +107,7 @@ server {
     server_name prometheus.baig.network;
     ssl_certificate     /etc/nginx/ssl/baig.crt;
     ssl_certificate_key /etc/nginx/ssl/baig.key;
+    include /etc/nginx/snippets/sso-auth.conf;
     location / {
         proxy_pass http://10.10.20.5:9090;
         proxy_set_header Host $host;
@@ -129,6 +130,7 @@ server {
     server_name loki.baig.network;
     ssl_certificate     /etc/nginx/ssl/baig.crt;
     ssl_certificate_key /etc/nginx/ssl/baig.key;
+    include /etc/nginx/snippets/sso-auth.conf;
     location / {
         proxy_pass http://10.10.20.5:3100;
         proxy_set_header Host $host;
@@ -153,8 +155,12 @@ server {
     server_name dozzle.baig.network;
     ssl_certificate     /etc/nginx/ssl/baig.crt;
     ssl_certificate_key /etc/nginx/ssl/baig.key;
+    include /etc/nginx/snippets/sso-auth.conf;
     location / {
         proxy_pass http://10.10.20.10:8080;
+        proxy_set_header Remote-User  $sso_user;
+        proxy_set_header Remote-Email $sso_email;
+        proxy_set_header Remote-Name  $sso_user;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -176,6 +182,7 @@ server {
     server_name glances.baig.network;
     ssl_certificate     /etc/nginx/ssl/baig.crt;
     ssl_certificate_key /etc/nginx/ssl/baig.key;
+    include /etc/nginx/snippets/sso-auth.conf;
     location / {
         proxy_pass http://10.10.20.10:61208;
         proxy_set_header Host $host;
@@ -199,6 +206,7 @@ server {
     server_name yamtrack.baig.network;
     ssl_certificate     /etc/nginx/ssl/baig.crt;
     ssl_certificate_key /etc/nginx/ssl/baig.key;
+    include /etc/nginx/snippets/sso-auth.conf;
     location / {
         proxy_pass http://10.10.20.6:8084;
         proxy_set_header Host $host;
@@ -221,6 +229,7 @@ server {
     server_name mailcatcher.baig.network;
     ssl_certificate     /etc/nginx/ssl/baig.crt;
     ssl_certificate_key /etc/nginx/ssl/baig.key;
+    include /etc/nginx/snippets/sso-auth.conf;
     location / {
         proxy_pass http://10.10.20.6:1080;
         proxy_set_header Host $host;
@@ -453,6 +462,7 @@ server {
     server_name alertmanager.baig.network;
     ssl_certificate     /etc/nginx/ssl/baig.crt;
     ssl_certificate_key /etc/nginx/ssl/baig.key;
+    include /etc/nginx/snippets/sso-auth.conf;
     location / {
         proxy_pass http://10.10.20.5:9093;
         proxy_set_header Host $host;
@@ -502,6 +512,7 @@ server {
     server_name cadvisor.baig.network;
     ssl_certificate     /etc/nginx/ssl/baig.crt;
     ssl_certificate_key /etc/nginx/ssl/baig.key;
+    include /etc/nginx/snippets/sso-auth.conf;
     location / {
         proxy_pass http://10.10.20.6:8085;
         proxy_set_header Host $host;
@@ -528,10 +539,32 @@ server {
     server_name home.baig.network;
     ssl_certificate     /etc/nginx/ssl/baig.crt;
     ssl_certificate_key /etc/nginx/ssl/baig.key;
+    include /etc/nginx/snippets/sso-auth.conf;
     root /var/www/hosts;
     index index.html;
     autoindex off;
     location / { try_files $uri $uri/ /index.html =404; }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name flow.baig.network;
+    ssl_certificate     /etc/nginx/ssl/baig.crt;
+    ssl_certificate_key /etc/nginx/ssl/baig.key;
+    include /etc/nginx/snippets/sso-auth.conf;
+    location / {
+        proxy_pass http://10.10.20.6:8787;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Auth-Request-Email $sso_email;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 1h;
+    }
 }
 
 # Gatus on the Oracle box, proxied so it gets the real certificate.
@@ -560,6 +593,7 @@ server {
     server_name oracle.baig.network;
     ssl_certificate     /etc/nginx/ssl/baig.crt;
     ssl_certificate_key /etc/nginx/ssl/baig.key;
+    include /etc/nginx/snippets/sso-auth.conf;
     location / {
         proxy_pass http://158.178.143.215:80;
         proxy_set_header Host $host;
@@ -706,6 +740,7 @@ server {
     server_name registry-ui.baig.network;
     ssl_certificate     /etc/nginx/ssl/baig.crt;
     ssl_certificate_key /etc/nginx/ssl/baig.key;
+    include /etc/nginx/snippets/sso-auth.conf;
     location / {
         proxy_pass http://10.10.50.41:8080;
         proxy_set_header Host $host;
