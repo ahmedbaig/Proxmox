@@ -1,0 +1,16 @@
+services:
+  flow:
+    build: ./app
+    image: flow:local
+    container_name: flow
+    restart: always
+    ports:
+      - "8787:8787"
+    environment:
+      DATABASE_URL: "{{ flow_database_url }}"
+      ADGUARD_URL: http://10.10.20.2
+      ADGUARD_AUTH: "{{ ('ahmed:' ~ apps_adguard_password) | b64encode }}"
+      LOKI_URL: http://10.10.20.5:3100
+      PROM_URL: http://10.10.20.5:9090
+    volumes:
+      - {{ apps_data_dir }}/flow:/data

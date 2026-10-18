@@ -57,6 +57,32 @@
     mode: "0755"
   loop: "{{ apps_data_dirs }}"
 
+- name: Flow data directory is writable by the container user
+  ansible.builtin.file:
+    path: "{{ apps_data_dir }}/flow"
+    state: directory
+    owner: "1000"
+    group: "1000"
+    mode: "0755"
+
+- name: Flow application directory
+  ansible.builtin.file:
+    path: "{{ apps_stacks_dir }}/flow/app"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Flow application source
+  ansible.builtin.copy:
+    src: "{{ apps_flow_source }}/{{ item }}"
+    dest: "{{ apps_stacks_dir }}/flow/app/"
+    owner: root
+    group: root
+    mode: u=rwX,go=rX
+  loop: "{{ apps_flow_files }}"
+  register: apps_flow_source_copy
+
 - name: Compose files
   ansible.builtin.template:
     src: "{{ item.template }}"
@@ -79,3 +105,9 @@
   loop_control:
     label: "{{ item.item.name }}"
   when: item is changed and not ansible_check_mode
+
+- name: Rebuild flow when its source changed
+  ansible.builtin.command:
+    cmd: docker compose up -d --build
+    chdir: "{{ apps_stacks_dir }}/flow"
+  when: apps_flow_source_copy is changed and not ansible_check_mode

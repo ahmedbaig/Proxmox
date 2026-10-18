@@ -6,11 +6,15 @@ apps_stacks:
   - { name: exporters, template: exporters.compose.yaml.j2 }
   - { name: adguard-exporter, template: adguard-exporter.compose.yaml.j2 }
   - { name: geo, template: geo.compose.yaml.j2 }
+  - { name: flow, template: flow.compose.yaml.j2 }
 
 apps_data_dirs:
   - yamtrack
   - webhook-tester
   - geo
+
+apps_flow_source: "{{ playbook_dir }}/../../../dns-flow"
+apps_flow_files: [Dockerfile, .dockerignore, package.json, package-lock.json, index.html, server, src, data]
 
 apps_docker_packages:
   - docker-ce

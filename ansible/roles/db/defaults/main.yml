@@ -14,6 +14,7 @@ db_postgres_roles:
   - { name: exporter, password_var: db_postgres_exporter_password, member_of: pg_monitor }
   - { name: memory, password_var: memory_db_password }
   - { name: geo, password_var: geo_db_password }
+  - { name: flow, password_var: flow_db_password }
 
 db_postgres_databases:
   - { name: hive, owner: hive }
@@ -22,6 +23,7 @@ db_postgres_databases:
   - { name: yamtrack, owner: postgres }
   - { name: memory, owner: memory, extensions: [vector, pg_trgm] }
   - { name: geo, owner: geo, extensions: [postgis, postgis_raster, pg_trgm, btree_gist] }
+  - { name: flow, owner: flow }
 
 db_mariadb_users:
   - { user: ahmed, host: "10.10.%", password_var: db_mariadb_admin_password, grant: "ALL PRIVILEGES ON *.*", grant_option: true }
