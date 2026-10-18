@@ -1,0 +1,42 @@
+loki.relabel "unifi" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__syslog_message_severity"]
+    target_label  = "level"
+  }
+  rule {
+    source_labels = ["__syslog_message_hostname"]
+    target_label  = "device"
+  }
+}
+
+loki.source.syslog "unifi" {
+  listener {
+    address       = "0.0.0.0:{{ alloy_unifi_syslog_port }}"
+    protocol      = "udp"
+    syslog_format = "rfc3164"
+    labels        = { job = "unifi", source = "ux7" }
+  }
+
+  listener {
+    address       = "0.0.0.0:{{ alloy_unifi_syslog_port }}"
+    protocol      = "tcp"
+    syslog_format = "rfc3164"
+    labels        = { job = "unifi", source = "ux7" }
+  }
+
+  relabel_rules = loki.relabel.unifi.rules
+  forward_to    = [loki.process.unifi.receiver]
+}
+
+loki.process "unifi" {
+  forward_to = [loki.write.central.receiver]
+
+  stage.regex {
+    expression = "^\\S+ (?P<ident>[A-Za-z0-9_.-]+)(\\[\\d+\\])?:"
+  }
+  stage.labels {
+    values = { ident = "" }
+  }
+}

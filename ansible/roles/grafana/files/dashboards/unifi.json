@@ -1,0 +1,851 @@
+{
+  "uid": "baig-unifi",
+  "title": "UniFi router",
+  "tags": [
+    "baig",
+    "unifi",
+    "network"
+  ],
+  "timezone": "browser",
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "ident",
+        "label": "Program",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "aen18i6tw61a8a"
+        },
+        "query": {
+          "label": "ident",
+          "stream": "{job=\"unifi\"}",
+          "type": 1
+        },
+        "definition": "label_values({job=\"unifi\"}, ident)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 2
+      },
+      {
+        "name": "search",
+        "label": "Search",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Syslog receiving (5m)",
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({job=\"unifi\"}[5m]))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "UX7 Wi-Fi joins",
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 3,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({job=\"unifi\"} |= \"STA_ASSOC_TRACKER\" != \"STA-TRACKER\" | regexp `(?P<payload>\\{.*\\})` | line_format \"{{.payload}}\" | json | event_type=~\".*(join|assoc|connect).*\" [$__range]))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "UX7 Wi-Fi leaves",
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({job=\"unifi\"} |= \"STA_ASSOC_TRACKER\" != \"STA-TRACKER\" | regexp `(?P<payload>\\{.*\\})` | line_format \"{{.payload}}\" | json | event_type=~\".*(leave|disassoc|disconnect).*\" [$__range]))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Joins on other APs",
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 9,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(sum by (mac) (count_over_time({job=\"unifi\", ident=\"hostapd\"} |= \"UBNT_ROAM\" | regexp `STA (?P<mac>\\S+) WPA: Receive UBNT_ROAM from (?P<ap>\\S+)` [$__range])))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "DHCP leases",
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({job=\"unifi\", ident=\"dnsmasq-dhcp\"} |= \"DHCPACK\" | regexp `DHCPACK\\((?P<iface>[^)]+)\\) (?P<ip>\\S+) (?P<mac>\\S+)( (?P<hostname>\\S+))?` [$__range]))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Devices on DHCP",
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 15,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(sum by (mac) (count_over_time({job=\"unifi\", ident=\"dnsmasq-dhcp\"} |= \"DHCPACK\" | regexp `DHCPACK\\((?P<iface>[^)]+)\\) (?P<ip>\\S+) (?P<mac>\\S+)( (?P<hostname>\\S+))?` [$__range])))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Distinct Wi-Fi MACs",
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 18,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(sum by (mac) (count_over_time({job=\"unifi\"} |= \"STA_ASSOC_TRACKER\" != \"STA-TRACKER\" | regexp `(?P<payload>\\{.*\\})` | line_format \"{{.payload}}\" | json [$__range])))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Warnings and errors",
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 21,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({job=\"unifi\", level=~\"warning|err|error|crit|critical|alert|emerg|emergency\"}[$__range]))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "UX7 Wi-Fi client events",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (event_type) (count_over_time({job=\"unifi\"} |= \"STA_ASSOC_TRACKER\" != \"STA-TRACKER\" | regexp `(?P<payload>\\{.*\\})` | line_format \"{{.payload}}\" | json [$__interval]))",
+          "legendFormat": "{{event_type}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Clients joining other APs (roam notices)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count by (ap) (sum by (ap, mac) (count_over_time({job=\"unifi\", ident=\"hostapd\"} |= \"UBNT_ROAM\" | regexp `STA (?P<mac>\\S+) WPA: Receive UBNT_ROAM from (?P<ap>\\S+)` [$__interval])))",
+          "legendFormat": "via {{ap}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "logs",
+      "title": "UX7 Wi-Fi client events",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"unifi\"} |= \"STA_ASSOC_TRACKER\" != \"STA-TRACKER\" | regexp `(?P<payload>\\{.*\\})` | line_format \"{{.payload}}\" | json | line_format \"{{.event_type}}  {{.mac}}  {{.vap}}  rssi {{.avg_rssi}}  {{.sta_dc_reason}}\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true,
+        "dedupStrategy": "none"
+      }
+    },
+    {
+      "id": 12,
+      "type": "logs",
+      "title": "Roam notices (client moved to another AP)",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"unifi\", ident=\"hostapd\"} |= \"UBNT_ROAM\" | regexp `STA (?P<mac>\\S+) WPA: Receive UBNT_ROAM from (?P<ap>\\S+)` | line_format \"{{.mac}}  joined AP {{.ap}}\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true,
+        "dedupStrategy": "exact"
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "DHCP leases by VLAN",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (iface) (count_over_time({job=\"unifi\", ident=\"dnsmasq-dhcp\"} |= \"DHCPACK\" | regexp `DHCPACK\\((?P<iface>[^)]+)\\) (?P<ip>\\S+) (?P<mac>\\S+)( (?P<hostname>\\S+))?` [$__interval]))",
+          "legendFormat": "{{iface}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "br10"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "VLAN 10 Trusted"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "br20"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "VLAN 20 Servers"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "br30"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "VLAN 30 IoT"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "br40"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "VLAN 40 Guest"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "br50"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "VLAN 50 Lab"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "br0"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "VLAN 1 Main Net"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "type": "logs",
+      "title": "DHCP leases (IP \u00b7 MAC \u00b7 hostname \u00b7 VLAN)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"unifi\", ident=\"dnsmasq-dhcp\"} |= \"DHCPACK\" | regexp `DHCPACK\\((?P<iface>[^)]+)\\) (?P<ip>\\S+) (?P<mac>\\S+)( (?P<hostname>\\S+))?` | line_format `{{.ip}}  {{.mac}}  {{.hostname}}  {{ if eq .iface \"br10\" }}VLAN 10 Trusted{{ end }}{{ if eq .iface \"br20\" }}VLAN 20 Servers{{ end }}{{ if eq .iface \"br30\" }}VLAN 30 IoT{{ end }}{{ if eq .iface \"br40\" }}VLAN 40 Guest{{ end }}{{ if eq .iface \"br50\" }}VLAN 50 Lab{{ end }}{{ if eq .iface \"br0\" }}VLAN 1 Main Net{{ end }}`"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true,
+        "dedupStrategy": "none"
+      }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Router log volume by program",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 29
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (ident) (count_over_time({job=\"unifi\", ident=~\"$ident\"}[$__interval]))",
+          "legendFormat": "{{ident}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Warnings and errors by program",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 29
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (ident) (count_over_time({job=\"unifi\", level=~\"warning|err|error|crit|critical|alert|emerg|emergency\"}[$__interval]))",
+          "legendFormat": "{{ident}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 17,
+      "type": "logs",
+      "title": "Router logs",
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "aen18i6tw61a8a"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"unifi\", ident=~\"$ident\"} |~ \"$search\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true,
+        "dedupStrategy": "none"
+      }
+    }
+  ]
+}

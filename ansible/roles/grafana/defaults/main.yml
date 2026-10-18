@@ -6,6 +6,7 @@ grafana_dashboards:
   - all-hosts.json
   - service-health.json
   - wireguard.json
+  - unifi.json
 
 grafana_prometheus_url: http://10.10.20.5:9090
 grafana_loki_url: http://10.10.20.5:3100
