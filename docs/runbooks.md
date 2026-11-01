@@ -123,7 +123,7 @@ ssh root@10.10.20.20 'pct exec 114 -- python3 /root/probe-detail.py'
 
 # Everything through the proxy
 for n in home grafana prometheus alertmanager obsidian yamtrack webhook \
-         mailcatcher pve dns1 plex; do
+         mailcatcher pve dns1 jellyfin files; do
   printf '%-14s ' "$n"
   curl -sS -o /dev/null -w '%{http_code}\n' --max-time 10 "https://$n.baig.network/"
 done

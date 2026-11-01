@@ -1,0 +1,13 @@
+- name: File server (CT 120)
+  hosts: files
+  # A failure later in the play must not leave a written firewall unloaded.
+  force_handlers: true
+  pre_tasks:
+    - name: Load secrets
+      community.sops.load_vars:
+        file: "{{ secrets_dir }}/ansible/files.sops.yaml"
+      no_log: true
+  roles:
+    - common
+    - files
+    - alloy

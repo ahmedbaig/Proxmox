@@ -9,7 +9,7 @@ graph LR
         B1["databases"]
         B2["wiki, yamtrack,<br/>webhook, mailcatcher"]
         B3["grafana ×2,<br/>prometheus ×2, loki"]
-        B4["Plex, Stremio,<br/>Transmission"]
+        B4["Stremio,<br/>Transmission"]
         B5["registry, sonarr, radarr,<br/>jackett, flaresolverr, vpn-ui"]
     end
 
@@ -46,7 +46,7 @@ graph LR
 
 ## Stays on the Mac mini
 
-Plex (native app, not a container), Stremio, Transmission, audiobookshelf,
+Stremio, Transmission, audiobookshelf,
 metabase, mongo-express, Portainer, dozzle, glances, node_exporter.
 
 Dozzle and glances are per-host by nature and still earn their place now that
@@ -60,7 +60,10 @@ the Mac mini keeps running media services.
 `vpn-ui` was the long-standing mystery in the old docs. It is simply dead.
 
 That also means the **1–2 TB SSD no longer gates anything** — the planned media
-container is moot, since Plex stays put and the *arr stack does not exist.
+container is moot, since the *arr stack does not exist.
+
+**Plex was retired on 1 Nov 2026.** Media lives on Proxmox ([File Server](file-server.md))
+and is served by Jellyfin on CT 121 with the GTX 950 ([Jellyfin](jellyfin.md)).
 
 ## Left to do
 

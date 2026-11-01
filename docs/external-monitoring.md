@@ -36,7 +36,7 @@ graph LR
 | **3-infrastructure** | Proxmox, AdGuard, service register, **UniFi gateway**, **GS724T switch** | |
 | **4-monitoring** | Grafana, Prometheus, Alertmanager, Loki, cAdvisor | If these are down, internal alerting is blind |
 | **5-apps** | CouchDB, YamTrack, webhook, mailcatcher | |
-| **6-media** | Plex, Stremio, Transmission, audiobookshelf, Glances, Dozzle | |
+| **6-media** | Jellyfin, Files, Stremio, Transmission, audiobookshelf, Glances, Dozzle | Plex replaced by Jellyfin, Files added 1 Nov 2026 |
 | **7** (work) | the 11 backends of a work dev stack on the MacBook | Expected down whenever that laptop is off |
 
 Three checks earn their place more than the rest:
@@ -169,7 +169,8 @@ reflect that deliberately:
 | Service | Healthy status | Why |
 |---|---|---|
 | CouchDB / Obsidian | **401** | Auth required; 401 proves it is running and enforcing |
-| Plex | 200 or 401 | Depends on token presence |
+| Jellyfin | `/health` → 200 and body `Healthy` | replaced Plex 1 Nov 2026 |
+| Files | 200 or 302 | 302 is the SSO redirect |
 | Transmission | 200, 401 or 403 | Returns 403 without a session header |
 | Grafana, Prometheus | 200 or 302 | Redirect to login |
 | Stremio, cAdvisor | 200 or 307 | Redirect to a sub-path |

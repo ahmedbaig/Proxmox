@@ -1,0 +1,139 @@
+- name: Install packages
+  ansible.builtin.apt:
+    name:
+      - samba
+      - nftables
+    state: present
+
+- name: Owner of the media tree
+  ansible.builtin.user:
+    name: "{{ files_owner }}"
+    uid: "{{ files_uid }}"
+    system: false
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: Samba login (no shell, Samba only)
+  ansible.builtin.user:
+    name: "{{ files_smb_rw_user }}"
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: Retired Samba logins
+  ansible.builtin.shell: |
+    pdbedit -L | grep -q '^{{ item }}:' || exit 0
+    smbpasswd -x {{ item }} >/dev/null && echo removed
+  loop: "{{ files_smb_retired_users }}"
+  register: files_smb_retired
+  changed_when: "'removed' in files_smb_retired.stdout"
+
+- name: Retired Unix accounts
+  ansible.builtin.user:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ files_smb_retired_users }}"
+
+- name: Samba passwords
+  ansible.builtin.shell: |
+    set -o pipefail
+    printf '%s\n%s\n' "$PW" "$PW" | smbpasswd -s -a {{ item.user }}
+  args:
+    executable: /bin/bash
+  environment:
+    PW: "{{ item.password }}"
+  loop:
+    - {user: "{{ files_smb_rw_user }}", password: "{{ files_smb_rw_password }}"}
+  loop_control:
+    label: "{{ item.user }}"
+  no_log: true
+  changed_when: false
+
+- name: Media root (bind mount from the Proxmox host)
+  ansible.builtin.file:
+    path: "{{ files_root }}"
+    state: directory
+    owner: "{{ files_owner }}"
+    group: "{{ files_owner }}"
+    mode: "0775"
+
+- name: Samba configuration
+  ansible.builtin.template:
+    src: smb.conf.j2
+    dest: /etc/samba/smb.conf
+    mode: "0644"
+    validate: testparm -s %s
+  notify: Restart smbd
+
+- name: Run Samba
+  ansible.builtin.service:
+    name: smbd
+    state: started
+    enabled: true
+
+- name: Stop NetBIOS (macOS finds the share by name, not by broadcast)
+  ansible.builtin.service:
+    name: nmbd
+    state: stopped
+    enabled: false
+
+- name: FileBrowser directory
+  ansible.builtin.file:
+    path: "{{ files_filebrowser_dir }}"
+    state: directory
+    owner: "{{ files_owner }}"
+    group: "{{ files_owner }}"
+    mode: "0750"
+
+- name: FileBrowser binary
+  ansible.builtin.get_url:
+    url: "{{ files_filebrowser_url }}"
+    dest: "{{ files_filebrowser_dir }}/filebrowser-{{ files_filebrowser_version }}"
+    mode: "0755"
+
+- name: Point at the pinned FileBrowser
+  ansible.builtin.file:
+    src: "{{ files_filebrowser_dir }}/filebrowser-{{ files_filebrowser_version }}"
+    dest: "{{ files_filebrowser_dir }}/filebrowser"
+    state: link
+  notify: Restart filebrowser
+
+- name: FileBrowser configuration
+  ansible.builtin.template:
+    src: filebrowser.yaml.j2
+    dest: "{{ files_filebrowser_dir }}/config.yaml"
+    owner: root
+    group: "{{ files_owner }}"
+    mode: "0640"
+  no_log: true
+  diff: false
+  notify: Restart filebrowser
+
+- name: FileBrowser unit
+  ansible.builtin.template:
+    src: filebrowser.service.j2
+    dest: /etc/systemd/system/filebrowser.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart filebrowser
+
+- name: Run FileBrowser
+  ansible.builtin.service:
+    name: filebrowser
+    state: started
+    enabled: true
+
+- name: Firewall
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    mode: "0644"
+    validate: nft -c -f %s
+  notify: Reload nftables
+
+- name: Run nftables
+  ansible.builtin.service:
+    name: nftables
+    state: started
+    enabled: true

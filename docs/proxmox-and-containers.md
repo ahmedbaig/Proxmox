@@ -1,7 +1,7 @@
 # Proxmox and Containers
 
 Proxmox VE **9.2.20**, kernel 7.0.14-17-pve, on the X299 workstation
-(i7-7740X, 24 GB, 256 GB NVMe) at `10.10.20.20`. Web UI at
+(i7-7740X, 24 GB, 256 GB NVMe, **GTX 950** on NVIDIA 580.196.07 for CT 121 — see [Jellyfin](jellyfin.md)) at `10.10.20.20`. Web UI at
 https://pve.baig.network.
 
 ## Container inventory
@@ -20,6 +20,8 @@ graph TB
         CT117["CT 117 · 10.10.50.30<br/>Docker host, private work test stack<br/>10 GB · order 8"]
         CT118["CT 118 · gitlab · 10.10.50.40<br/>GitLab CE<br/>5 GB · order 10"]
         CT119["CT 119 · registry · 10.10.50.41<br/>Docker registry<br/>1 GB · order 9"]
+        CT120["CT 120 · files · 10.10.20.8<br/>Samba + FileBrowser<br/>1 GB · order 11"]
+        CT121["CT 121 · jellyfin · 10.10.20.9<br/>Jellyfin + GTX 950<br/>4 GB · order 12"]
     end
 ```
 
@@ -115,6 +117,9 @@ Measured 28 Sep 2026, after VM 100 (win11) and VM 101 (ml) were destroyed:
 > Files deleted inside a container stay allocated in the pool until they are
 > discarded. CT 117 showed 84 % allocated against ~62 % used inside.
 > `pct fstrim <id>` returns the difference.
+
+**1 Nov 2026:** a 40 GB thin LV `pve/media` now backs the media share on CT 120
+(temporary, until a media disk is fitted — see [File Server](file-server.md)).
 
 Memory is the real constraint. Guest memory caps already add up to more than
 physical RAM; that holds only while actual use stays low. See [CI and Registry](ci-and-registry.md)

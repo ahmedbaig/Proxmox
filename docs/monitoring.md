@@ -51,6 +51,11 @@ graph TB
 
 ## Scrape targets
 
+> **1 Nov 2026:** added `10.10.20.8:9100` (`files`) and `10.10.20.9:9100` (`jellyfin`) to `node`,
+> `10.10.20.8:445` to `blackbox-tcp`, `https://files.baig.network` to `blackbox-http`, and
+> replaced the `plex.baig.network` probe with `jellyfin.baig.network`. New dashboard
+> **Files and Jellyfin** (`baig-files`).
+
 **56 targets, all up** as of 27 Sep 2026. A work dev stack lives on the
 MacBook and is legitimately down whenever that laptop is off — those nine are
 scraped so dashboards work when it is on, but **excluded from alerting** with a

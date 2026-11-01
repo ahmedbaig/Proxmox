@@ -1,0 +1,274 @@
+# The NVIDIA userspace driver is installed by hand and must match the host's
+# kernel module exactly — see docs/jellyfin.md. This only checks it is there.
+- name: GPU is visible
+  ansible.builtin.command: nvidia-smi -L
+  changed_when: false
+
+- name: Tools for the repository key
+  ansible.builtin.apt:
+    name: [curl, gpg, nftables]
+    state: present
+
+- name: Apt keyring directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Jellyfin apt signing key
+  ansible.builtin.shell: >-
+    set -o pipefail &&
+    curl -fsSL https://repo.jellyfin.org/jellyfin_team.gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/jellyfin.gpg
+  args:
+    creates: /etc/apt/keyrings/jellyfin.gpg
+    executable: /bin/bash
+  register: jellyfin_apt_key
+
+- name: Jellyfin apt repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/jellyfin.list
+    content: "deb [signed-by=/etc/apt/keyrings/jellyfin.gpg] https://repo.jellyfin.org/debian {{ ansible_distribution_release }} main\n"
+    mode: "0644"
+  register: jellyfin_apt_repo
+
+- name: Install Jellyfin
+  ansible.builtin.apt:
+    name: jellyfin
+    state: present
+    update_cache: "{{ jellyfin_apt_key is changed or jellyfin_apt_repo is changed }}"
+
+- name: Run Jellyfin
+  ansible.builtin.service:
+    name: jellyfin
+    state: started
+    enabled: true
+
+# Third-party binary — off until approved; see docs/jellyfin.md.
+- name: GPU exporter
+  when: jellyfin_gpu_exporter_enabled | bool
+  block:
+    - name: GPU exporter checksum
+      ansible.builtin.set_fact:
+        jellyfin_gpu_exporter_sha: >-
+          {{ lookup('ansible.builtin.url', jellyfin_gpu_exporter_base ~ '/checksums.txt', wantlist=True)
+             | select('search', jellyfin_gpu_exporter_tarball ~ '$') | first | split | first }}
+
+    - name: GPU exporter tarball (verified)
+      ansible.builtin.get_url:
+        url: "{{ jellyfin_gpu_exporter_base }}/{{ jellyfin_gpu_exporter_tarball }}"
+        dest: /opt/{{ jellyfin_gpu_exporter_tarball }}
+        checksum: "sha256:{{ jellyfin_gpu_exporter_sha }}"
+        mode: "0644"
+      register: jellyfin_gpu_exporter_download
+
+    - name: GPU exporter binary
+      ansible.builtin.unarchive:
+        src: /opt/{{ jellyfin_gpu_exporter_tarball }}
+        dest: /usr/local/bin
+        remote_src: true
+        include: [nvidia_gpu_exporter]
+      when: jellyfin_gpu_exporter_download is changed
+      notify: Restart gpu exporter
+
+    - name: GPU exporter unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/nvidia-gpu-exporter.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=NVIDIA GPU exporter
+          After=network-online.target
+
+          [Service]
+          DynamicUser=yes
+          ExecStart=/usr/local/bin/nvidia_gpu_exporter --web.listen-address=:{{ jellyfin_gpu_exporter_port }}
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart gpu exporter
+
+    - name: Run GPU exporter
+      ansible.builtin.service:
+        name: nvidia-gpu-exporter
+        state: started
+        enabled: true
+
+- name: Firewall
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    mode: "0644"
+    validate: nft -c -f %s
+  notify: Reload nftables
+
+- name: Run nftables
+  ansible.builtin.service:
+    name: nftables
+    state: started
+    enabled: true
+
+- name: Wait for Jellyfin
+  ansible.builtin.uri:
+    url: "{{ jellyfin_url }}/System/Info/Public"
+    return_content: true
+  register: jellyfin_info
+  until: jellyfin_info.status == 200
+  retries: 30
+  delay: 2
+
+- name: First-run wizard
+  when: not jellyfin_info.json.StartupWizardCompleted
+  block:
+    - name: Wizard — locale and metadata
+      ansible.builtin.uri:
+        url: "{{ jellyfin_url }}/Startup/Configuration"
+        method: POST
+        body_format: json
+        body: {UICulture: en-US, MetadataCountryCode: AU, PreferredMetadataLanguage: en}
+        status_code: [200, 204]
+
+    - name: Wizard — read the initial user (creates it)
+      ansible.builtin.uri:
+        url: "{{ jellyfin_url }}/Startup/User"
+
+    - name: Wizard — admin user
+      ansible.builtin.uri:
+        url: "{{ jellyfin_url }}/Startup/User"
+        method: POST
+        body_format: json
+        body: {Name: "{{ jellyfin_admin_user }}", Password: "{{ jellyfin_admin_password }}"}
+        status_code: [200, 204]
+      no_log: true
+
+    - name: Wizard — remote access on, no UPnP
+      ansible.builtin.uri:
+        url: "{{ jellyfin_url }}/Startup/RemoteAccess"
+        method: POST
+        body_format: json
+        body: {EnableRemoteAccess: true, EnableAutomaticPortMapping: false}
+        status_code: [200, 204]
+
+    - name: Wizard — finish
+      ansible.builtin.uri:
+        url: "{{ jellyfin_url }}/Startup/Complete"
+        method: POST
+        status_code: [200, 204]
+
+- name: Log in as admin
+  ansible.builtin.uri:
+    url: "{{ jellyfin_url }}/Users/AuthenticateByName"
+    method: POST
+    headers:
+      Authorization: 'MediaBrowser Client="ansible", Device="ansible", DeviceId="ansible-{{ inventory_hostname }}", Version="1"'
+    body_format: json
+    body: {Username: "{{ jellyfin_admin_user }}", Pw: "{{ jellyfin_admin_password }}"}
+  register: jellyfin_auth
+  no_log: true
+
+- name: Use the session token
+  ansible.builtin.set_fact:
+    jellyfin_headers:
+      Authorization: 'MediaBrowser Client="ansible", Device="ansible", DeviceId="ansible-{{ inventory_hostname }}", Version="1", Token="{{ jellyfin_auth.json.AccessToken }}"'
+  no_log: true
+
+- name: Existing libraries
+  ansible.builtin.uri:
+    url: "{{ jellyfin_url }}/Library/VirtualFolders"
+    headers: "{{ jellyfin_headers }}"
+  register: jellyfin_folders
+  no_log: true
+
+- name: Libraries
+  ansible.builtin.uri:
+    url: "{{ jellyfin_url }}/Library/VirtualFolders?name={{ item.name | urlencode }}&collectionType={{ item.type }}&paths={{ item.path | urlencode }}&refreshLibrary=true"
+    method: POST
+    headers: "{{ jellyfin_headers }}"
+    body_format: json
+    body: {LibraryOptions: {}}
+    status_code: [200, 204]
+  loop: "{{ jellyfin_libraries }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.name not in (jellyfin_folders.json | map(attribute='Name'))
+  changed_when: true
+  register: jellyfin_created
+
+- name: Libraries after creation
+  ansible.builtin.uri:
+    url: "{{ jellyfin_url }}/Library/VirtualFolders"
+    headers: "{{ jellyfin_headers }}"
+  register: jellyfin_folders
+  no_log: true
+
+- name: Metadata fetchers the server offers
+  ansible.builtin.uri:
+    url: "{{ jellyfin_url }}/Libraries/AvailableOptions?libraryContentType={{ item.type }}&isNewLibrary=true"
+    headers: "{{ jellyfin_headers }}"
+  loop: "{{ jellyfin_libraries }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: jellyfin_available
+  no_log: true
+
+# Only pushed while a library has no fetchers yet or a flag differs, so
+# changes made later in the UI (extra fetchers, ordering) are kept.
+- name: Library options
+  ansible.builtin.uri:
+    url: "{{ jellyfin_url }}/Library/VirtualFolders/LibraryOptions"
+    method: POST
+    headers: "{{ jellyfin_headers }}"
+    body_format: json
+    body:
+      Id: "{{ jellyfin_lib.ItemId }}"
+      LibraryOptions: "{{ jellyfin_lib.LibraryOptions | combine(jellyfin_library_options, {'TypeOptions': jellyfin_type_options | from_json}) }}"
+    status_code: [200, 204]
+  vars:
+    jellyfin_lib: "{{ jellyfin_folders.json | selectattr('Name', 'eq', item.item.name) | first }}"
+    jellyfin_type_options: >-
+      [{% for t in item.json.TypeOptions %}
+      {% set mf = ((t.MetadataFetchers | selectattr('DefaultEnabled') | map(attribute='Name') | list)
+                   + (t.MetadataFetchers | selectattr('Name', 'in', jellyfin_metadata_fetchers) | map(attribute='Name') | list)) | unique | list %}
+      {% set imf = ((t.ImageFetchers | selectattr('DefaultEnabled') | map(attribute='Name') | list)
+                    + (t.ImageFetchers | selectattr('Name', 'in', jellyfin_metadata_fetchers) | map(attribute='Name') | list)) | unique | list %}
+      {{ {'Type': t.Type, 'MetadataFetchers': mf, 'MetadataFetcherOrder': mf,
+          'ImageFetchers': imf, 'ImageFetcherOrder': imf, 'ImageOptions': t.DefaultImageOptions} | to_json }}{{ '' if loop.last else ',' }}
+      {% endfor %}]
+  loop: "{{ jellyfin_available.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: >-
+    jellyfin_lib.LibraryOptions.TypeOptions | length == 0
+    or jellyfin_lib.LibraryOptions | combine(jellyfin_library_options) != jellyfin_lib.LibraryOptions
+  changed_when: true
+  register: jellyfin_options_set
+  no_log: true
+
+- name: Scan the libraries
+  ansible.builtin.uri:
+    url: "{{ jellyfin_url }}/Library/Refresh"
+    method: POST
+    headers: "{{ jellyfin_headers }}"
+    status_code: [200, 204]
+  when: jellyfin_created is changed or jellyfin_options_set is changed
+  changed_when: true
+  no_log: true
+
+- name: Current encoding settings
+  ansible.builtin.uri:
+    url: "{{ jellyfin_url }}/System/Configuration/encoding"
+    headers: "{{ jellyfin_headers }}"
+  register: jellyfin_encoding_current
+  no_log: true
+
+- name: NVENC
+  ansible.builtin.uri:
+    url: "{{ jellyfin_url }}/System/Configuration/encoding"
+    method: POST
+    headers: "{{ jellyfin_headers }}"
+    body_format: json
+    body: "{{ jellyfin_encoding_current.json | combine(jellyfin_encoding) }}"
+    status_code: [200, 204]
+  when: jellyfin_encoding_current.json | combine(jellyfin_encoding) != jellyfin_encoding_current.json
+  changed_when: true
+  no_log: true

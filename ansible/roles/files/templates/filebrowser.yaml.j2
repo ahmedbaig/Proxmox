@@ -1,0 +1,38 @@
+# {{ ansible_managed }}
+server:
+  sources:
+    - path: "{{ files_root }}"
+      name: "Media"
+      config:
+        defaultEnabled: true
+        rules:
+          - folderName: "lost+found"
+        defaultPermissions:
+          view: true
+          download: true
+          modify: true
+          delete: true
+          create: true
+          configured: true
+  cacheDir: "{{ files_filebrowser_dir }}/cache"
+  database:
+    path: "{{ files_filebrowser_dir }}/filebrowser.sqlite"
+http:
+  port: {{ files_filebrowser_port }}
+  listen: "{{ ip }}"
+  externalUrl: "https://files.{{ domain }}"
+  trustProxyHeaders: true
+auth:
+  methods:
+    # nginx sets X-Auth-Request-Email from the Entra SSO session (oauth2-proxy).
+    proxy:
+      enabled: true
+      header: X-Auth-Request-Email
+      logoutRedirectUrl: "https://auth.{{ domain }}/oauth2/sign_out"
+    password:
+      enabled: false
+  adminUsername: "{{ files_filebrowser_admin }}"
+  adminPassword: "{{ files_filebrowser_admin_password }}"
+userDefaults:
+  account:
+    loginMethod: proxy

@@ -8,3 +8,5 @@
 - import_playbook: docker.yml
 - import_playbook: gitlab.yml
 - import_playbook: registry.yml
+- import_playbook: files.yml
+- import_playbook: jellyfin.yml

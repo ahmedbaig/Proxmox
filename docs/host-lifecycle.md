@@ -216,3 +216,7 @@ the log below.
 | 2026-09-28 | CT 118 `gitlab` | created (Lab, `10.10.50.40`, order 10): GitLab CE 19.4.1; DNS, nginx, register card, certs, Alloy, node + blackbox targets; outbound locked to the lab |
 | 2026-09-28 | CT 119 `registry` | `keyctl=1` + Docker for the registry UI (`registry-ui.baig.network`, register card, blackbox probe) |
 | 2026-09-28 | CT 117 | `keyctl=1`, Docker, two GitLab runners, user `deploy` — see [CI and Registry](ci-and-registry.md) |
+| 2026-11-01 | CT 120 `files` | created (Servers, `10.10.20.8`, order 11) with `mp0` bind mount of host `/mnt/media` (temporary 40 GB thin LV). Role `files`: Samba, FileBrowser Quantum, nftables, Alloy. nginx `files.baig.network` with SSO; node + blackbox targets; Grafana dashboard; Gatus endpoint. See [File Server](file-server.md) |
+| 2026-11-01 | host `pve` | NVIDIA 580.196.07 (DKMS) for the GTX 950, `nouveau` blacklisted and unloaded live; modules-load + udev rule for `/dev/nvidia*`. See [Jellyfin](jellyfin.md) |
+| 2026-11-01 | CT 121 `jellyfin` | created (Servers, `10.10.20.9`, order 12), GPU `dev0–dev3`, `/mnt/media` read-only. Role `jellyfin`. nginx `jellyfin.baig.network`; `plex.baig.network` 301s to it; Plex probe and Gatus check replaced |
+| 2026-11-01 | Mac mini Plex | retired. Samba `plex` login and the Mac mini's SMB access removed from CT 120 |

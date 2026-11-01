@@ -1,0 +1,16 @@
+[Unit]
+Description=FileBrowser Quantum
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ files_owner }}
+Group={{ files_owner }}
+WorkingDirectory={{ files_filebrowser_dir }}
+Environment=FILEBROWSER_CONFIG={{ files_filebrowser_dir }}/config.yaml
+ExecStart={{ files_filebrowser_dir }}/filebrowser
+Restart=on-failure
+UMask=0002
+
+[Install]
+WantedBy=multi-user.target

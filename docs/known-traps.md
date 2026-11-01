@@ -34,6 +34,21 @@ CouchDB's apt repo.
 | `macmini.local` / Bonjour stops working | mDNS does not cross VLANs | Use the FQDN |
 | ICMP monitoring shows Main Net hosts permanently down | No `Servers → Internal` firewall policy. Only `192.168.0.1` answers | Either add the policy or stop probing them |
 
+## Ansible
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Firewall file is on disk but `nft list ruleset` shows policy accept | The play that wrote it failed later, so the **reload handler never ran**; re-runs see no change and never notify again | `force_handlers: true` on the play (done for `files.yml`, `jellyfin.yml`), or reload by hand after any failed run |
+| Alloy role fails on a brand-new container: `curl: command not found`, then `Missing key …` / `No package matching 'alloy'` | Fresh Debian 13 template has no `curl`/`gpg`; the failed run left an **empty** `grafana.gpg`, which `creates:` then trusts | Role now installs `curl gpg` first and refreshes apt when the key changes |
+
+## GPU
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Failed to initialize NVML: Driver/library version mismatch` in CT 121 | Host kernel module and the CT's userspace libraries differ | Install the **same** `.run` in the CT with `--no-kernel-modules` — see [Jellyfin](jellyfin.md) |
+| Jellyfin transcodes on the CPU after a Proxmox update | New kernel, and the 580 legacy driver failed to build under DKMS | `dkms status`; pin the previous kernel with `proxmox-boot-tool kernel pin` |
+| `smb://files.baig.network` refuses the login | Flat service names resolve to the proxy, which speaks HTTPS only | `smb://10.10.20.8/media` |
+
 ## DNS
 
 | Symptom | Cause | Fix |
@@ -61,6 +76,7 @@ CouchDB's apt repo.
 | ICMP probes always return `probe_success 0` | Unprivileged LXC blocks raw sockets; `CAP_NET_RAW` does not help | Run blackbox-exporter on the Proxmox host |
 | Proxmox warns "Systemd 257 detected. You may need to enable nesting" | It means it | `--features nesting=1` |
 | `Permission denied (publickey,password)` to Proxmox although the key is authorised | The local key is passphrase-protected and non-interactive SSH cannot prompt | `ssh-add ~/.ssh/id_rsa` first |
+| Finder copies single files to the Samba share but folder copies fail | The share had `veto files = /.DS_Store/`. Finder writes `.DS_Store` into every folder it copies and aborts the whole copy when Samba refuses it | Don't veto `.DS_Store` on a share Macs write to. Removed from the `files` role, 1 Nov 2026 |
 
 ## Databases
 

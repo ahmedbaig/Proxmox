@@ -25,12 +25,13 @@ monitoring_blackbox_http_targets:
   - https://home.baig.network
   - https://glances.baig.network
   - https://dozzle.baig.network
-  - https://plex.baig.network
+  - https://jellyfin.baig.network
   - https://stremio.baig.network
   - https://transmission.baig.network
   - https://registry.baig.network
   - https://gitlab.baig.network
   - https://registry-ui.baig.network
+  - https://files.baig.network
 
 monitoring_private_blackbox_http_targets: []
 monitoring_private_scrape_configs: ""

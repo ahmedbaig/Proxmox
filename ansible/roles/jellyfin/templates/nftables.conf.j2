@@ -1,0 +1,26 @@
+#!/usr/sbin/nft -f
+# {{ ansible_managed }}
+
+flush ruleset
+
+table inet filter {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		ct state established,related accept
+		ct state invalid drop
+		iif lo accept
+		ip protocol icmp accept
+
+		# SSH: Trusted, the Mac mini, the Proxmox host
+		tcp dport 22 ip saddr { 10.10.10.0/24, 10.10.20.10, {{ proxmox_host }} } accept
+		# Prometheus on CT 114: node exporter, GPU exporter
+		tcp dport { 9100, {{ jellyfin_gpu_exporter_port }} } ip saddr 10.10.20.5 accept
+		tcp dport {{ jellyfin_port }} ip saddr { {{ jellyfin_allow | join(', ') }} } accept
+	}
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+	}
+	chain output {
+		type filter hook output priority filter;
+	}
+}

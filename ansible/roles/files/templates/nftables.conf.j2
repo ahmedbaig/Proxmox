@@ -1,0 +1,27 @@
+#!/usr/sbin/nft -f
+# {{ ansible_managed }}
+
+flush ruleset
+
+table inet filter {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		ct state established,related accept
+		ct state invalid drop
+		iif lo accept
+		ip protocol icmp accept
+
+		# SSH: Trusted, the Mac mini, the Proxmox host
+		tcp dport 22 ip saddr { 10.10.10.0/24, 10.10.20.10, {{ proxmox_host }} } accept
+		# Prometheus on CT 114: node exporter, and the blackbox SMB connect probe
+		tcp dport { 9100, 445 } ip saddr 10.10.20.5 accept
+		tcp dport 445 ip saddr { {{ files_smb_allow | join(', ') }} } accept
+		tcp dport {{ files_filebrowser_port }} ip saddr {{ files_filebrowser_allow }} accept
+	}
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+	}
+	chain output {
+		type filter hook output priority filter;
+	}
+}

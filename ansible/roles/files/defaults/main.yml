@@ -1,0 +1,23 @@
+files_root: /srv/media
+files_share: media
+
+# Unprivileged CT: uid 1000 here is 101000 on the Proxmox host, which owns /mnt/media.
+files_owner: media
+files_uid: 1000
+
+# Samba login; password comes from homelab-secrets/ansible/files.sops.yaml.
+files_smb_rw_user: ahmed
+# Removed 1 Nov 2026: Plex retired; Jellyfin (CT 121) reads the disk directly.
+files_smb_retired_users: [plex]
+
+# Only these may reach SMB: Trusted (MacBook), WireGuard clients.
+files_smb_allow:
+  - 10.10.10.0/24
+  - 10.10.50.20
+
+files_filebrowser_version: v2.0.2-stable
+files_filebrowser_url: "https://github.com/gtsteffaniak/filebrowser/releases/download/{{ files_filebrowser_version }}/linux-amd64-filebrowser"
+files_filebrowser_dir: /opt/filebrowser
+files_filebrowser_port: 8080
+# FileBrowser trusts the SSO header blindly, so only the proxy may reach it.
+files_filebrowser_allow: 10.10.20.3

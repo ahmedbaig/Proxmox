@@ -1,3 +1,11 @@
+# A fresh Debian 13 template ships neither.
+- name: Tools for fetching the signing key
+  ansible.builtin.apt:
+    name:
+      - curl
+      - gpg
+    state: present
+
 - name: Grafana apt keyring directory
   ansible.builtin.file:
     path: /etc/apt/keyrings
@@ -13,6 +21,7 @@
   args:
     creates: /etc/apt/keyrings/grafana.gpg
     executable: /bin/bash
+  register: grafana_apt_key
 
 - name: Grafana apt repository
   ansible.builtin.copy:
@@ -26,4 +35,4 @@
 - name: Refresh apt cache after adding the Grafana repository
   ansible.builtin.apt:
     update_cache: true
-  when: grafana_apt_repo is changed
+  when: grafana_apt_repo is changed or grafana_apt_key is changed

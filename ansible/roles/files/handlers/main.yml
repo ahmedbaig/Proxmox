@@ -1,0 +1,18 @@
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart smbd
+  ansible.builtin.service:
+    name: smbd
+    state: restarted
+
+- name: Restart filebrowser
+  ansible.builtin.service:
+    name: filebrowser
+    state: restarted
+
+- name: Reload nftables
+  ansible.builtin.service:
+    name: nftables
+    state: reloaded

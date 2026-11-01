@@ -14,6 +14,8 @@ variable "containers" {
     dns         = optional(list(string), ["10.10.20.2"])
     search      = optional(string)
     description = optional(string)
+    mounts      = optional(list(object({ host = string, path = string, read_only = optional(bool, false) })), [])
+    devices     = optional(list(string), [])
   }))
 }
 
@@ -47,6 +49,22 @@ resource "proxmox_virtual_environment_container" "ct" {
   disk {
     datastore_id = "local-lvm"
     size         = each.value.disk
+  }
+
+  dynamic "mount_point" {
+    for_each = each.value.mounts
+    content {
+      volume    = mount_point.value.host
+      path      = mount_point.value.path
+      read_only = mount_point.value.read_only
+    }
+  }
+
+  dynamic "device_passthrough" {
+    for_each = each.value.devices
+    content {
+      path = device_passthrough.value
+    }
   }
 
   network_interface {

@@ -1,0 +1,38 @@
+jellyfin_media_root: /srv/media
+jellyfin_port: 8096
+jellyfin_url: "http://127.0.0.1:{{ jellyfin_port }}"
+jellyfin_admin_user: ahmed
+
+# Read-only bind mount of the media share on CT 120 (see the files role).
+jellyfin_libraries:
+  - {name: Movies, type: movies, path: "{{ jellyfin_media_root }}/Movies"}
+  - {name: TV Shows, type: tvshows, path: "{{ jellyfin_media_root }}/TV Shows"}
+
+# Libraries created through the API start with everything off: no folder
+# watching, no metadata fetchers. These are merged into every library.
+jellyfin_library_options:
+  EnableRealtimeMonitor: true
+  EnableInternetProviders: true
+  PreferredMetadataLanguage: en
+  MetadataCountryCode: AU
+# Enabled for every item type on top of the server's own defaults.
+jellyfin_metadata_fetchers: [TheMovieDb]
+
+# GTX 950 (Maxwell GM206): NVENC H.264, NVDEC up to 10-bit HEVC and VP9.
+jellyfin_encoding:
+  HardwareAccelerationType: nvenc
+  EnableHardwareEncoding: true
+  HardwareDecodingCodecs: [h264, hevc, mpeg2video, vc1, vp9]
+  EnableDecodingColorDepth10Hevc: true
+  AllowHevcEncoding: false
+  EnableTonemapping: true
+
+# Web UI and apps: through the proxy, or directly from Trusted.
+jellyfin_allow: [10.10.20.3, 10.10.10.0/24]
+
+# GPU metrics for Prometheus (nvidia-smi based, so it follows the userspace driver).
+jellyfin_gpu_exporter_enabled: false
+jellyfin_gpu_exporter_version: 1.16.0
+jellyfin_gpu_exporter_base: "https://github.com/utkuozdemir/nvidia_gpu_exporter/releases/download/v{{ jellyfin_gpu_exporter_version }}"
+jellyfin_gpu_exporter_tarball: "nvidia_gpu_exporter_{{ jellyfin_gpu_exporter_version }}_linux_x86_64.tar.gz"
+jellyfin_gpu_exporter_port: 9835

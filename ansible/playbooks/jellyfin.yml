@@ -1,0 +1,13 @@
+- name: Jellyfin (CT 121)
+  hosts: jellyfin
+  # A failure later in the play must not leave a written firewall unloaded.
+  force_handlers: true
+  pre_tasks:
+    - name: Load secrets
+      community.sops.load_vars:
+        file: "{{ secrets_dir }}/ansible/jellyfin.sops.yaml"
+      no_log: true
+  roles:
+    - common
+    - jellyfin
+    - alloy

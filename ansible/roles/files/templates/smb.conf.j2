@@ -1,0 +1,38 @@
+# {{ ansible_managed }}
+[global]
+    server string = files
+    server role = standalone server
+    map to guest = never
+    restrict anonymous = 2
+    server min protocol = SMB3
+    disable netbios = yes
+    smb ports = 445
+    load printers = no
+    printing = bsd
+    printcap name = /dev/null
+    disable spoolss = yes
+    log file = /var/log/samba/%m.log
+    max log size = 1000
+    logging = file
+
+    # macOS Finder: proper metadata, no .DS_Store/._ litter on the share
+    vfs objects = catia fruit streams_xattr
+    fruit:metadata = stream
+    fruit:model = MacSamba
+    fruit:posix_rename = yes
+    fruit:veto_appledouble = no
+    fruit:nfs_aces = no
+    fruit:wipe_intentionally_left_blank_rfork = yes
+    fruit:delete_empty_adfiles = yes
+
+[{{ files_share }}]
+    path = {{ files_root }}
+    valid users = {{ files_smb_rw_user }}
+    write list = {{ files_smb_rw_user }}
+    # Everything lands as the media owner, the same uid FileBrowser writes as.
+    force user = {{ files_owner }}
+    force group = {{ files_owner }}
+    create mask = 0664
+    directory mask = 0775
+    # No `veto files = /.DS_Store/`: Finder writes .DS_Store into every folder
+    # it copies, and a refused write aborts the whole folder copy.

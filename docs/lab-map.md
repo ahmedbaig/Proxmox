@@ -10,6 +10,8 @@ to the internet; inbound is via VPN only.
 - [Remote Access](remote-access.md) — WireGuard, OpenVPN, and how anything gets in
 - [DNS](dns.md) — AdGuard, Unbound, and why this network cannot resolve recursively
 - [Proxmox and Containers](proxmox-and-containers.md) — what runs where, and the bridge that bites
+- [File Server](file-server.md) — CT 120, the media share: Finder and browser
+- [Jellyfin](jellyfin.md) — CT 121, media server on the GTX 950
 - [Databases](databases.md) — CT 112, five engines, migration status
 - [Reverse Proxy and Certificates](reverse-proxy-and-certificates.md) — nginx, the wildcard, renewal
 - [Monitoring](monitoring.md) — Prometheus, Loki, Grafana, alerting
@@ -49,7 +51,9 @@ graph TB
         METRICS["CT 114 metrics · 10.10.20.5"]
         APPS["CT 113 apps · 10.10.20.6"]
         GRAF["CT 115 grafana · 10.10.20.7"]
-        MACMINI["Mac mini 10.10.20.10<br/>Plex, Stremio, Transmission"]
+        FILES["CT 120 files · 10.10.20.8<br/>Samba + FileBrowser"]
+        JELLY["CT 121 jellyfin · 10.10.20.9<br/>NVENC on GTX 950"]
+        MACMINI["Mac mini 10.10.20.10<br/>Stremio, Transmission"]
     end
 
     subgraph LAB["VLAN 50 — Lab 10.10.50.0/24"]
@@ -62,7 +66,8 @@ graph TB
     UX7 --> SW
     SW --> PI & AP & TV
     SW --> PVE & MACMINI & MACBOOK
-    PVE --- DNS1 & PROXY & DB & METRICS & APPS & GRAF
+    PVE --- DNS1 & PROXY & DB & METRICS & APPS & GRAF & FILES & JELLY
+    JELLY -.->|"same disk, read-only"| FILES
     PVE --- VPN & PC & GL & RG
 
     DNS1 -.->|"DoT, bypasses interception"| CF
@@ -102,7 +107,9 @@ Gateway is always `.1`. IPv6 is off everywhere.
 | apps (CT 113)    | `10.10.20.6`                | yamtrack, webhook, mailcatcher, exporters |
 | grafana (CT 115) | `10.10.20.7`                | dashboards                                |
 | vpn (CT 116)     | `10.10.50.20`               | WireGuard udp/51820 + web UI on 10086     |
-| Mac mini         | `10.10.20.10`               | Plex, Stremio, Transmission               |
+| files (CT 120)   | `10.10.20.8`                | Samba + FileBrowser, media share — see [File Server](file-server.md) |
+| jellyfin (CT 121) | `10.10.20.9`               | Jellyfin, NVENC on the GTX 950 — see [Jellyfin](jellyfin.md) |
+| Mac mini         | `10.10.20.10`               | Stremio, Transmission (Plex retired 1 Nov 2026) |
 | MacBook          | `10.10.10.10`               | wired, en7                                |
 | win11 (VM 100)   | `10.10.20.21`               | **destroyed 28 Sep 2026**; address and DNS rewrite kept for a rebuild |
 | ml (VM 101)      | `10.10.50.10`               | **destroyed 28 Sep 2026**; address and DNS rewrite kept for a rebuild |

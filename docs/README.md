@@ -1,6 +1,6 @@
 # Docs
 
-Notes for the homelab this repo builds: one Proxmox VE host, ten Debian LXC
+Notes for the homelab this repo builds: one Proxmox VE host, twelve Debian LXC
 containers, four VLANs, domain `baig.network`. Written while building it, so
 they record what broke and why as much as what is there.
 
@@ -14,6 +14,8 @@ Start with the [Lab Map](lab-map.md).
 | [Remote Access](remote-access.md) | WireGuard, OpenVPN, and how anything gets in |
 | [DNS](dns.md) | AdGuard Home, Unbound over DoT, rewrites |
 | [Proxmox and Containers](proxmox-and-containers.md) | Container inventory, the bridge trap, the container recipe, capacity |
+| [File Server](file-server.md) | CT 120: Samba and FileBrowser over the media share |
+| [Jellyfin](jellyfin.md) | CT 121: media server, NVENC on the GTX 950, the NVIDIA driver |
 | [Databases](databases.md) | CT 112: PostgreSQL, MariaDB, MongoDB, Redis, CouchDB |
 | [Reverse Proxy and Certificates](reverse-proxy-and-certificates.md) | nginx, the wildcard certificate, renewal and distribution |
 | [Monitoring](monitoring.md) | Prometheus, Loki, Alertmanager, Grafana |

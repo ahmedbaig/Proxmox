@@ -54,4 +54,19 @@ containers = {
     search      = "lab.baig.network"
     description = "Docker registry"
   }
+  files = {
+    vmid        = 120, order = 11, cores = 2, memory = 1024, swap = 512, disk = 8
+    ip          = "10.10.20.8/24", gateway = "10.10.20.1", vlan = 20, mac = "BC:24:11:AE:0E:FE"
+    search      = "servers.baig.network"
+    description = "Samba + FileBrowser Quantum over /mnt/media"
+    mounts      = [{ host = "/mnt/media", path = "/srv/media" }]
+  }
+  jellyfin = {
+    vmid        = 121, order = 12, cores = 4, memory = 4096, swap = 1024, disk = 24
+    ip          = "10.10.20.9/24", gateway = "10.10.20.1", vlan = 20, mac = "BC:24:11:26:5B:9B"
+    search      = "servers.baig.network"
+    description = "Jellyfin media server, NVENC on the GTX 950, media read-only from /mnt/media"
+    mounts      = [{ host = "/mnt/media", path = "/srv/media", read_only = true }]
+    devices     = ["/dev/nvidia0", "/dev/nvidiactl", "/dev/nvidia-uvm", "/dev/nvidia-uvm-tools"]
+  }
 }

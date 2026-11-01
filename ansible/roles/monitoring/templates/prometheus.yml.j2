@@ -62,6 +62,10 @@ scrape_configs:
         labels: {host: apps,     role: apps,    kind: lxc}
       - targets: ['10.10.20.7:9100']
         labels: {host: grafana,  role: grafana, kind: lxc}
+      - targets: ['10.10.20.8:9100']
+        labels: {host: files,    role: files,   kind: lxc}
+      - targets: ['10.10.20.9:9100']
+        labels: {host: jellyfin, role: media,   kind: lxc}
       - targets: ['10.10.50.20:9100']
         labels: {host: vpn,      role: vpn,     kind: lxc}
       - targets: ['10.10.50.30:9100']
@@ -155,6 +159,7 @@ scrape_configs:
           - db.servers.baig.network:5984       # couchdb
           - 10.10.20.20:8006                  # proxmox api
           - 10.10.20.2:53                      # dns1
+          - 10.10.20.8:445                     # files smb
           # WireGuard is UDP-only; a TCP connect probe can never succeed against
           # it. Liveness comes from wg handshake counters instead.
     relabel_configs:
