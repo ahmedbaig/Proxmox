@@ -16,6 +16,7 @@ Start with the [Lab Map](lab-map.md).
 | [Proxmox and Containers](proxmox-and-containers.md) | Container inventory, the bridge trap, the container recipe, capacity |
 | [File Server](file-server.md) | CT 120: Samba and FileBrowser over the media share |
 | [Jellyfin](jellyfin.md) | CT 121: media server, NVENC on the GTX 950, the NVIDIA driver |
+| [Ollama](ollama.md) | Local LLMs on the Mac mini for Zed and Cline, Trusted and VPN only |
 | [Databases](databases.md) | CT 112: PostgreSQL, MariaDB, MongoDB, Redis, CouchDB |
 | [Reverse Proxy and Certificates](reverse-proxy-and-certificates.md) | nginx, the wildcard certificate, renewal and distribution |
 | [Monitoring](monitoring.md) | Prometheus, Loki, Alertmanager, Grafana |
