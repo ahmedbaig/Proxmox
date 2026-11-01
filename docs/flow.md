@@ -7,7 +7,7 @@
 | Piece | Where | Managed by |
 |---|---|---|
 | Bridge + map (`flow` Compose stack, port 8787) | CT 113 apps | `apps` role, built from `../dns-flow` (`apps_flow_source`) |
-| `flow` database (devices, identifiers, sightings, networks, audit) | CT 112 db | `db` role; secret `homelab-secrets/flow/postgres.sops.yaml` |
+| `flow` database (devices, identifiers, sightings, networks, audit; unlogged `history_minute` / `history_station` ring buffers, ~1–2 MB, fixed size) | CT 112 db | `db` role; secret `homelab-secrets/flow/postgres.sops.yaml` |
 | UniFi syslog receiver (`{job="unifi"}`, port 1514) | CT 114 metrics, Alloy | `alloy` fragment `unifi_syslog`, enabled in `host_vars/metrics.yml` |
 | `flow.baig.network` vhost behind Entra SSO | CT 111 proxy | `proxy` role |
 | UniFi router dashboard | CT 115 grafana | `grafana` role, `dashboards/unifi.json` |
