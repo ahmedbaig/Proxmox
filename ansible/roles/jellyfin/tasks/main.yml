@@ -43,56 +43,50 @@
     state: started
     enabled: true
 
-# Third-party binary — off until approved; see docs/jellyfin.md.
-- name: GPU exporter
-  when: jellyfin_gpu_exporter_enabled | bool
-  block:
-    - name: GPU exporter checksum
-      ansible.builtin.set_fact:
-        jellyfin_gpu_exporter_sha: >-
-          {{ lookup('ansible.builtin.url', jellyfin_gpu_exporter_base ~ '/checksums.txt', wantlist=True)
-             | select('search', jellyfin_gpu_exporter_tarball ~ '$') | first | split | first }}
+# GPU metrics ride on the existing node exporter scrape: nvidia-smi writes a
+# file for the textfile collector every 15 s. No extra daemon or port.
+- name: GPU metrics script
+  ansible.builtin.copy:
+    src: nvidia-textfile.sh
+    dest: /usr/local/bin/nvidia-textfile
+    mode: "0755"
 
-    - name: GPU exporter tarball (verified)
-      ansible.builtin.get_url:
-        url: "{{ jellyfin_gpu_exporter_base }}/{{ jellyfin_gpu_exporter_tarball }}"
-        dest: /opt/{{ jellyfin_gpu_exporter_tarball }}
-        checksum: "sha256:{{ jellyfin_gpu_exporter_sha }}"
-        mode: "0644"
-      register: jellyfin_gpu_exporter_download
+- name: GPU metrics service and timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/{{ item.name }}
+    mode: "0644"
+    content: "{{ item.content }}"
+  loop:
+    - name: nvidia-textfile.service
+      content: |
+        [Unit]
+        Description=Write GPU metrics for node exporter
 
-    - name: GPU exporter binary
-      ansible.builtin.unarchive:
-        src: /opt/{{ jellyfin_gpu_exporter_tarball }}
-        dest: /usr/local/bin
-        remote_src: true
-        include: [nvidia_gpu_exporter]
-      when: jellyfin_gpu_exporter_download is changed
-      notify: Restart gpu exporter
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/nvidia-textfile
+    - name: nvidia-textfile.timer
+      content: |
+        [Unit]
+        Description=GPU metrics every 15 seconds
 
-    - name: GPU exporter unit
-      ansible.builtin.copy:
-        dest: /etc/systemd/system/nvidia-gpu-exporter.service
-        mode: "0644"
-        content: |
-          [Unit]
-          Description=NVIDIA GPU exporter
-          After=network-online.target
+        [Timer]
+        OnBootSec=30
+        OnUnitActiveSec=15
+        AccuracySec=1
 
-          [Service]
-          DynamicUser=yes
-          ExecStart=/usr/local/bin/nvidia_gpu_exporter --web.listen-address=:{{ jellyfin_gpu_exporter_port }}
-          Restart=on-failure
+        [Install]
+        WantedBy=timers.target
+  loop_control:
+    label: "{{ item.name }}"
+  register: jellyfin_gpu_units
 
-          [Install]
-          WantedBy=multi-user.target
-      notify: Restart gpu exporter
-
-    - name: Run GPU exporter
-      ansible.builtin.service:
-        name: nvidia-gpu-exporter
-        state: started
-        enabled: true
+- name: Run the GPU metrics timer
+  ansible.builtin.systemd:
+    name: nvidia-textfile.timer
+    state: started
+    enabled: true
+    daemon_reload: "{{ jellyfin_gpu_units is changed }}"
 
 - name: Firewall
   ansible.builtin.template:

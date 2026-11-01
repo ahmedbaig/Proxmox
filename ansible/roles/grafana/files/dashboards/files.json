@@ -9,7 +9,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "1m",
   "time": {
     "from": "now-24h",
@@ -386,7 +386,7 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Network (uploads in, Plex reads out)",
+      "title": "Network (uploads in, Jellyfin reads out)",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -598,7 +598,7 @@
     {
       "id": 13,
       "type": "stat",
-      "title": "Exporter",
+      "title": "Node exporter",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -702,6 +702,483 @@
           }
         },
         "overrides": []
+      }
+    },
+    {
+      "id": 15,
+      "type": "row",
+      "title": "GPU \u2014 GTX 950 (nvidia-smi via node exporter textfile)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 29
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "Driver",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 30
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fen19il3pklq8c"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nvidia_smi_up{host=\"jellyfin\"})"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "MISMATCH"
+                },
+                "1": {
+                  "text": "OK"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "description": "0 means nvidia-smi failed \u2014 usually a host kernel update left the CT's userspace driver on a different version. See the driver section of the Jellyfin doc."
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "Encoder (NVENC)",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 30
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fen19il3pklq8c"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nvidia_utilization_encoder_ratio{host=\"jellyfin\"})"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Above 0 only while Jellyfin is transcoding. 0 during playback means the device is playing the file directly."
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "Decoder (NVDEC)",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 30
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fen19il3pklq8c"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nvidia_utilization_decoder_ratio{host=\"jellyfin\"})"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": ""
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "Temperature",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 30
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fen19il3pklq8c"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nvidia_temperature_celsius{host=\"jellyfin\"})"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "GTX 950 slows itself down around 95 \u00b0C."
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "Power",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 30
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fen19il3pklq8c"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nvidia_power_draw_watts{host=\"jellyfin\"})"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Board limit is 90 W; ~25 W idle."
+    },
+    {
+      "id": 21,
+      "type": "stat",
+      "title": "VRAM used",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 30
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fen19il3pklq8c"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nvidia_memory_used_bytes{host=\"jellyfin\"}) / max(nvidia_memory_total_bytes{host=\"jellyfin\"})"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.8
+              },
+              {
+                "color": "red",
+                "value": 0.95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "2 GB card; each transcode takes roughly 150\u2013300 MB."
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "GPU load (transcoding shows as encoder + decoder)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 34
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fen19il3pklq8c"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nvidia_utilization_encoder_ratio{host=\"jellyfin\"}",
+          "legendFormat": "encoder"
+        },
+        {
+          "refId": "B",
+          "expr": "nvidia_utilization_decoder_ratio{host=\"jellyfin\"}",
+          "legendFormat": "decoder"
+        },
+        {
+          "refId": "C",
+          "expr": "nvidia_utilization_gpu_ratio{host=\"jellyfin\"}",
+          "legendFormat": "3D / CUDA (tone mapping)"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Temperature and power",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 34
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fen19il3pklq8c"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nvidia_temperature_celsius{host=\"jellyfin\"}",
+          "legendFormat": "temperature"
+        },
+        {
+          "refId": "B",
+          "expr": "nvidia_power_draw_watts{host=\"jellyfin\"}",
+          "legendFormat": "power"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperature"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "power"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "watt"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
       }
     }
   ]

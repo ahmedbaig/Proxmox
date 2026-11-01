@@ -92,9 +92,12 @@ the next boot.
 - Gatus: **Jellyfin** in `6-media`, `/health` must return `200` and `Healthy`
   (replaced the Plex check).
 - Grafana: **Files and Jellyfin** dashboard, Jellyfin row.
-- GPU metrics: `nvidia_gpu_exporter` is in the role but **off**
-  (`jellyfin_gpu_exporter_enabled: false`) — it is a third-party binary and has
-  not been approved. Port 9835 is already open to CT 114.
+- GPU metrics: a 15-second systemd timer (`nvidia-textfile`) runs `nvidia-smi` and
+  writes `nvidia_*` series for node exporter's textfile collector, so they ride
+  the existing `:9100` scrape — no third-party exporter, no extra port.
+  `nvidia_smi_up 0` means the CT's driver no longer matches the host module.
+  Grafana: **GPU** row on the Files and Jellyfin dashboard (encoder, decoder,
+  temperature, power, VRAM). Encoder at 0 % during playback = direct play.
 
 ## Open items
 
@@ -103,7 +106,7 @@ the next boot.
       Needs an Entra app registration (redirect URI per the plugin README,
       `https://jellyfin.baig.network/sso/OID/redirect/<provider>` — check before registering). Local logins stay
       for the TV and phone apps, as Grafana and Proxmox keep theirs.
-- [ ] Decide on the GPU exporter.
+- [x] GPU metrics (1 Nov 2026), via nvidia-smi and the textfile collector.
 - [x] AdGuard rewrite `jellyfin.servers.baig.network → 10.10.20.9` (1 Nov 2026).
 - [x] Service register card (1 Nov 2026).
 

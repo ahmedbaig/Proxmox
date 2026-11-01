@@ -30,9 +30,3 @@ jellyfin_encoding:
 # Web UI and apps: through the proxy, or directly from Trusted.
 jellyfin_allow: [10.10.20.3, 10.10.10.0/24]
 
-# GPU metrics for Prometheus (nvidia-smi based, so it follows the userspace driver).
-jellyfin_gpu_exporter_enabled: false
-jellyfin_gpu_exporter_version: 1.16.0
-jellyfin_gpu_exporter_base: "https://github.com/utkuozdemir/nvidia_gpu_exporter/releases/download/v{{ jellyfin_gpu_exporter_version }}"
-jellyfin_gpu_exporter_tarball: "nvidia_gpu_exporter_{{ jellyfin_gpu_exporter_version }}_linux_x86_64.tar.gz"
-jellyfin_gpu_exporter_port: 9835
