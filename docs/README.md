@@ -9,6 +9,7 @@ Start with the [Lab Map](lab-map.md).
 | Page | What it covers |
 |---|---|
 | [Lab Map](lab-map.md) | The whole lab in one diagram, fixed addresses, where to go next |
+| [Getting Around](getting-around.md) | How to reach every box and run things on it: pct exec, GitLab, Grafana API, databases |
 | [Network Topology](network-topology.md) | Physical wiring, VLANs, firewall zones |
 | [Firewall Policies](firewall-policies.md) | Every zone rule, what it unblocks, what it costs |
 | [Remote Access](remote-access.md) | WireGuard, OpenVPN, and how anything gets in |

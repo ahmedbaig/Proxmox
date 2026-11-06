@@ -5,6 +5,7 @@ to the internet; inbound is via VPN only.
 
 ## Start here
 
+- [Getting Around](getting-around.md) — how to reach every box and run things on it
 - [Network Topology](network-topology.md) — physical wiring, VLANs, firewall zones
 - [Firewall Policies](firewall-policies.md) — every zone rule, what it unblocks, what it costs
 - [Remote Access](remote-access.md) — WireGuard, OpenVPN, and how anything gets in
