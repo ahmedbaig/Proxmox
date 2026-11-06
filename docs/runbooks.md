@@ -122,7 +122,7 @@ ssh root@10.10.20.20 'pct exec 114 -- python3 /root/verify-metrics.py'
 ssh root@10.10.20.20 'pct exec 114 -- python3 /root/probe-detail.py'
 
 # Everything through the proxy
-for n in home grafana prometheus alertmanager obsidian yamtrack webhook \
+for n in home grafana prometheus alertmanager obsidian scrob webhook \
          mailcatcher pve dns1 jellyfin files; do
   printf '%-14s ' "$n"
   curl -sS -o /dev/null -w '%{http_code}\n' --max-time 10 "https://$n.baig.network/"
@@ -299,7 +299,7 @@ ssh pi@192.168.0.3 'systemctl is-active openvpn@server; sudo ss -lnup | grep 119
 `openvpn-server@server` is disabled and must stay that way — see
 [Remote Access](remote-access.md).
 
-## Test Telegram alerting
+## Test Discord alerting
 
 ```bash
 ssh root@10.10.20.20 'pct exec 114 -- amtool alert add \
@@ -307,10 +307,14 @@ ssh root@10.10.20.20 'pct exec 114 -- amtool alert add \
   --annotation=summary="test" --alertmanager.url=http://127.0.0.1:9093'
 ```
 
-Re-point it at a different bot or chat:
+It lands in `#alerts` from the **Alertmanager** webhook. To re-point it, change
+`monitoring_discord_webhook_url` in homelab-secrets and redeploy the Alertmanager
+task. `--start-at-task` skips *Load secrets*, so pass them in:
 
 ```bash
-ssh root@10.10.20.20 '/root/apply-telegram.sh <bot-token> <chat-id>'
+cd ansible && sops -d ../../homelab-secrets/ansible/monitoring.sops.yaml > /tmp/m.yaml
+ansible-playbook playbooks/metrics.yml --start-at-task "Alertmanager config" -e @/tmp/m.yaml
+rm /tmp/m.yaml
 ```
 
 ## Back up what matters

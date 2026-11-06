@@ -9,7 +9,6 @@ apps_stacks:
   - { name: flow, template: flow.compose.yaml.j2 }
 
 apps_data_dirs:
-  - yamtrack
   - webhook-tester
   - geo
 

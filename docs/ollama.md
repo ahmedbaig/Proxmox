@@ -53,7 +53,7 @@ model `qwen3-coder:30b`. Or *OpenAI Compatible* with base URL
 ## Monitoring
 
 - Prometheus `blackbox-http`: `https://ollama.baig.network` (also in `ServiceDown`).
-- Gatus (Oracle): **Ollama** in `5-apps`, `/api/version`, Telegram after 6 failures
+- Gatus (Oracle): **Ollama** in `5-apps`, `/api/version`, Discord after 6 failures
   (30 min) because it is legitimately down after a reboot.
 - Service register card on `home.baig.network`.
 

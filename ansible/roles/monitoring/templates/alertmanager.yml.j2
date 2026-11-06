@@ -1,7 +1,7 @@
 # /etc/prometheus/alertmanager.yml  —  CT 114 (metrics, 10.10.20.5)
 #
 # Certificate expiry and service-health rules fire in Prometheus; Alertmanager
-# turns them into notifications. Telegram is primary; webhook-tester is kept as
+# turns them into notifications. Discord (#alerts) is primary; webhook-tester is kept as
 # a secondary so alerts stay visible in a browser if delivery fails.
 
 global:
@@ -10,7 +10,7 @@ global:
 templates: []
 
 route:
-  receiver: telegram
+  receiver: discord
   group_by: ['alertname', 'instance']
   group_wait: 30s
   group_interval: 5m
@@ -21,20 +21,20 @@ route:
   routes:
     - matchers:
         - severity = "critical"
-      receiver: telegram
+      receiver: discord
       repeat_interval: 4h
 
 receivers:
-  - name: telegram
-    telegram_configs:
-      - bot_token: {{ monitoring_telegram_bot_token }}
-        chat_id: {{ monitoring_telegram_chat_id }}
-        parse_mode: HTML
+  - name: discord
+    discord_configs:
+      - webhook_url: {{ monitoring_discord_webhook_url }}
         send_resolved: true
+        title: |{% raw %}
+          {{ if eq .Status "firing" }}⚠️ {{ .CommonLabels.severity | toUpper }}{{ else }}✅ RESOLVED{{ end }}: {{ .CommonLabels.alertname }}
+{% endraw %}
         message: |{% raw %}
-          {{ if eq .Status "firing" }}⚠️ <b>{{ .CommonLabels.severity | toUpper }}</b>{{ else }}✅ <b>RESOLVED</b>{{ end }}
           {{ range .Alerts }}
-          <b>{{ .Labels.alertname }}</b>
+          **{{ .Labels.alertname }}**{{ if .Labels.instance }} · `{{ .Labels.instance }}`{{ end }}
           {{ .Annotations.summary }}
           {{ if .Annotations.description }}{{ .Annotations.description }}{{ end }}
           {{ end }}

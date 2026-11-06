@@ -21,7 +21,8 @@ All five are `enabled` on boot and verified to return after a container reboot.
 | Database | Owner | Rows | Notes |
 |---|---|---|---|
 | `wiki` | postgres | 32 tables | Wiki.js — **content extracted, safe to drop** |
-| `yamtrack` | postgres | 8,757 items | recovered from a hidden SQLite — see below |
+| `yamtrack` | postgres | 8,757 items | app **retired 5 Nov 2026**, replaced by Scrob; dump `/root/backups/yamtrack-20261105.dump` |
+| `scrob` | scrob | — | Scrob, replaced Yamtrack on 5 Nov 2026 |
 | `hive` | **hive** | 9 tables | |
 | `speedtest` | **speedtest** | 16 tables | |
 

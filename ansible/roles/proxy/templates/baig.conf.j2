@@ -199,16 +199,16 @@ server {
     }
 }
 
-# Portainer — Docker UI on the Mac mini.
+# Scrob — media tracking, replaces Yamtrack.
 server {
     listen 443 ssl;
     http2 on;
-    server_name yamtrack.baig.network;
+    server_name scrob.baig.network;
     ssl_certificate     /etc/nginx/ssl/baig.crt;
     ssl_certificate_key /etc/nginx/ssl/baig.key;
     include /etc/nginx/snippets/sso-auth.conf;
     location / {
-        proxy_pass http://10.10.20.6:8084;
+        proxy_pass http://10.10.20.6:7330;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

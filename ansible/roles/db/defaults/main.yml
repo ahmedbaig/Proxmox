@@ -15,6 +15,7 @@ db_postgres_roles:
   - { name: memory, password_var: memory_db_password }
   - { name: geo, password_var: geo_db_password }
   - { name: flow, password_var: flow_db_password }
+  - { name: scrob, password_var: scrob_db_password }
 
 db_postgres_databases:
   - { name: hive, owner: hive }
@@ -24,6 +25,7 @@ db_postgres_databases:
   - { name: memory, owner: memory, extensions: [vector, pg_trgm] }
   - { name: geo, owner: geo, extensions: [postgis, postgis_raster, pg_trgm, btree_gist] }
   - { name: flow, owner: flow }
+  - { name: scrob, owner: scrob }
 
 db_mariadb_users:
   - { user: ahmed, host: "10.10.%", password_var: db_mariadb_admin_password, grant: "ALL PRIVILEGES ON *.*", grant_option: true }

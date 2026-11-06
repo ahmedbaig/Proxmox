@@ -13,7 +13,7 @@ graph TB
         CT110["CT 110 · dns1 · 10.10.20.2<br/>AdGuard + Unbound<br/>8 GB · order 1"]
         CT111["CT 111 · proxy · 10.10.20.3<br/>nginx + wildcard cert<br/>512 MB · order 2"]
         CT112["CT 112 · db · 10.10.20.4<br/>Postgres, MariaDB, Mongo,<br/>Redis, CouchDB<br/>6 GB · order 3"]
-        CT113["CT 113 · apps · 10.10.20.6<br/>yamtrack, webhook, mailcatcher,<br/>cAdvisor, exporters<br/>2 GB · order 4"]
+        CT113["CT 113 · apps · 10.10.20.6<br/>scrob, webhook, mailcatcher,<br/>cAdvisor, exporters<br/>2 GB · order 4"]
         CT114["CT 114 · metrics · 10.10.20.5<br/>Prometheus, Loki,<br/>Alertmanager, blackbox<br/>4 GB · order 5"]
         CT115["CT 115 · grafana · 10.10.20.7<br/>Grafana 13.2.2<br/>2 GB · order 6"]
         CT116["CT 116 · vpn · 10.10.50.20<br/>WireGuard<br/>1 GB · order 7"]

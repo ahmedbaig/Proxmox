@@ -104,7 +104,7 @@ Gateway is always `.1`. IPv6 is off everywhere.
 | proxy (CT 111)   | `10.10.20.3`                | nginx, wildcard cert                      |
 | db (CT 112)      | `10.10.20.4`                | Postgres, MariaDB, Mongo, Redis, CouchDB  |
 | metrics (CT 114) | `10.10.20.5`                | Prometheus, Loki, Alertmanager            |
-| apps (CT 113)    | `10.10.20.6`                | yamtrack, webhook, mailcatcher, exporters |
+| apps (CT 113)    | `10.10.20.6`                | scrob, webhook, mailcatcher, exporters |
 | grafana (CT 115) | `10.10.20.7`                | dashboards                                |
 | vpn (CT 116)     | `10.10.50.20`               | WireGuard udp/51820 + web UI on 10086     |
 | files (CT 120)   | `10.10.20.8`                | Samba + FileBrowser, media share — see [File Server](file-server.md) |

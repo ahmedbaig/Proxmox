@@ -8,7 +8,7 @@
     - name: Load geo and flow database secrets
       community.sops.load_vars:
         file: "{{ secrets_dir }}/{{ item }}/postgres.sops.yaml"
-      loop: [geo, flow]
+      loop: [geo, flow, scrob]
       no_log: true
   roles:
     - common

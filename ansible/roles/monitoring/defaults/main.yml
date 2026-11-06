@@ -15,7 +15,7 @@ monitoring_blackbox_http_targets:
   - https://oracle.baig.network
   - https://dns1.baig.network
   - https://obsidian.baig.network
-  - https://yamtrack.baig.network
+  - https://scrob.baig.network
   - https://webhook.baig.network
   - https://mailcatcher.baig.network
   - https://grafana.baig.network
@@ -37,6 +37,5 @@ monitoring_blackbox_http_targets:
 monitoring_private_blackbox_http_targets: []
 monitoring_private_scrape_configs: ""
 
-monitoring_telegram_bot_token: ""
-monitoring_telegram_chat_id: ""
+monitoring_discord_webhook_url: ""
 monitoring_exporter_down_selector: ""

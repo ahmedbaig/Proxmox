@@ -87,7 +87,7 @@ from CT 111 8080 open; from CT 114 9100 and 445 open, 8080 closed.
 - Grafana dashboard **Files and Jellyfin** (`baig-files`): space used, free, SMB / web /
   exporter status, network in and out, disk I/O, CPU and memory.
 - Logs: Alloy ships the journal to Loki.
-- Gatus: **Files** in group `6-media`, `200` or `302` (SSO redirect), Telegram alert.
+- Gatus: **Files** in group `6-media`, `200` or `302` (SSO redirect), Discord alert.
 
 ## Storage: temporary volume now, real disk later
 

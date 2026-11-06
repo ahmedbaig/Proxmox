@@ -81,7 +81,7 @@ a certificate on Oracle or the tunnel opened the other way.
 > [!CAUTION]
 > **This puts the watchdog behind the thing it watches**
 > Gatus answers *"is the lab reachable from outside?"*. Reached through this proxy,
-> the moment the lab is down is the moment the dashboard is too. Telegram alerting
+> the moment the lab is down is the moment the dashboard is too. Discord alerting
 > is unaffected, and **`http://158.178.143.215/` still works directly** — that is
 > the address to use when the house is on fire, and it stays in the register card's
 > subtitle for exactly that reason.

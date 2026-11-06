@@ -113,7 +113,7 @@ host, unit, level, ident, job, container, stack, stream, log_type, method, statu
 {job="systemd-journal", level=~"err|crit|alert|emerg"}
 
 # One container's output
-{job="docker", container="yamtrack"}
+{job="docker", container="scrob"}
 ```
 
 > [!WARNING]
@@ -136,7 +136,7 @@ host, unit, level, ident, job, container, stack, stream, log_type, method, statu
 ```mermaid
 graph LR
     RULES["Prometheus rules<br/>6 rules"] --> AM["Alertmanager"]
-    AM -->|"group 30s · repeat 24h<br/>critical: repeat 4h"| TG["Telegram<br/>@AhmedProxmox_bot"]
+    AM -->|"group 30s · repeat 24h<br/>critical: repeat 4h"| DC["Discord #alerts<br/>webhook: Alertmanager"]
     AM -->|"same receiver"| WH["webhook-tester<br/>readable history"]
 ```
 
@@ -153,20 +153,20 @@ Certificate alerts repeat every 24 h rather than every 4 — certificates expire
 on a scale of weeks, and a warning that repeats hourly is one you learn to
 ignore.
 
-The single `telegram` receiver fans out to **both** a `telegram_configs` and a
-`webhook_configs` pointing at webhook-tester on `10.10.20.6:8083`. Telegram is
-the alert that reaches you; webhook-tester is a local, credential-free history
+The single `discord` receiver fans out to **both** a `discord_configs` (webhook
+**Alertmanager** in `#alerts`) and a `webhook_configs` pointing at webhook-tester on
+`10.10.20.6:8083`. Discord is the alert that reaches you; webhook-tester is a local, credential-free history
 you can scroll when you want to know what fired last Tuesday.
 
 Alerts matching `severity = "critical"` go to the same receiver but repeat every
 **4 hours** instead of 24.
 
 > [!NOTE]
-> **Internal and external alerts use different bots**
-> Alertmanager sends as `@AhmedProxmox_bot` (`8719011328`). Gatus on the Oracle
-> box sends as `@AhmedSydneyOracleAdmin_bot` (`8426343772`), so the sender alone
-> tells you whether the problem is internal or whether the lab has fallen off the
-> internet. See [External Monitoring](external-monitoring.md).
+> **Internal and external alerts use different webhooks**
+> Both post to `#alerts` on Discord. Alertmanager posts as **Alertmanager**; Gatus on
+> the Oracle box posts as **Gatus (Oracle)**, so the sender alone tells you whether
+> the problem is internal or whether the lab has fallen off the internet. Telegram
+> was retired on 5 Nov 2026. See [External Monitoring](external-monitoring.md).
 
 ### One inhibit rule
 

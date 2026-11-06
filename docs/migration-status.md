@@ -36,7 +36,7 @@ graph LR
 |---|---|---|---|
 | PostgreSQL, MariaDB, Mongo, Redis | Mac mini Docker | CT 112 native | **staged copy, verified** |
 | CouchDB | — | CT 112 | new, live |
-| yamtrack | Mac mini | CT 113 | live |
+| yamtrack | Mac mini | CT 113 | retired 5 Nov 2026, replaced by Scrob |
 | webhook-tester | Mac mini | CT 113 | live, now with persistent storage |
 | mailcatcher | Mac mini | CT 113 | live |
 | Prometheus ×2 | Mac mini | CT 114, merged to one | live |

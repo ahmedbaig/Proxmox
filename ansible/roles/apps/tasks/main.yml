@@ -57,13 +57,14 @@
     mode: "0755"
   loop: "{{ apps_data_dirs }}"
 
-- name: Flow data directory is writable by the container user
+- name: Data directories writable by the container user
   ansible.builtin.file:
-    path: "{{ apps_data_dir }}/flow"
+    path: "{{ apps_data_dir }}/{{ item }}"
     state: directory
     owner: "1000"
     group: "1000"
     mode: "0755"
+  loop: [flow, scrob]
 
 - name: Flow application directory
   ansible.builtin.file:

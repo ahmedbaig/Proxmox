@@ -11,7 +11,7 @@ graph LR
     P["proxy 10.10.20.3"]
     D["dns1 10.10.20.2"]
     PUB["8.8.8.8<br/>public DNS"]
-    T["Telegram"]
+    T["Discord #alerts"]
 
     G -->|"via tunnel"| WG
     WG --> P
@@ -23,7 +23,7 @@ graph LR
 - URL: `http://158.178.143.215:8080` (or via the Oracle box's own reverse proxy)
 - Config: `/home/ubuntu/docker/gatus-config.yaml`
 - Container: `ghcr.io/twin/gatus:stable`
-- Alerts: Telegram, **`@AhmedSydneyOracleAdmin_bot`** (bot id `8426343772`)
+- Alerts: Discord webhook **Gatus (Oracle)** → `#alerts`, URL in `DISCORD_WEBHOOK_URL` in `docker-compose-gatus.yml` (Telegram retired 5 Nov 2026)
 
 ## What it watches
 
@@ -35,7 +35,7 @@ graph LR
 | **2-tls** | wildcard certificate expiry | One cert covers every name |
 | **3-infrastructure** | Proxmox, AdGuard, service register, **UniFi gateway**, **GS724T switch** | |
 | **4-monitoring** | Grafana, Prometheus, Alertmanager, Loki, cAdvisor | If these are down, internal alerting is blind |
-| **5-apps** | CouchDB, YamTrack, webhook, mailcatcher | |
+| **5-apps** | CouchDB, Scrob, webhook, mailcatcher | |
 | **6-media** | Jellyfin, Files, Stremio, Transmission, audiobookshelf, Glances, Dozzle | Plex replaced by Jellyfin, Files added 1 Nov 2026 |
 | **7** (work) | the 11 backends of a work dev stack on the MacBook | Expected down whenever that laptop is off |
 
@@ -64,14 +64,14 @@ never the problem — `getMe` returns `AhmedSydneyOracleAdmin_bot` and a direct
 > **`default-alert` supplies DEFAULTS for an alert; it does not create one**
 > ```yaml
 > alerting:
->   telegram:
->     token: "${TELEGRAM_BOT_TOKEN}"
+>   discord:
+>     webhook-url: "${DISCORD_WEBHOOK_URL}"
 >     default-alert:
 >       failure-threshold: 3      # <- defaults only
 > ```
 > An endpoint with **no `alerts:` key has no alert at all** and can fail silently
 > forever. Only 12 of 33 had one. This is easy to miss because the config looks
-> complete and Gatus logs `configuredProviders=[telegram]` at startup — which
+> complete and Gatus logs `configuredProviders=[discord]` at startup — which
 > confirms the provider parsed, not that anything is using it.
 >
 > Audit it rather than reading it:
@@ -97,7 +97,7 @@ A throwaway endpoint pointed at an unroutable address was added with
 `failure-threshold: 1`, and the log showed:
 
 ```
-[watchdog.handleAlertsToTrigger] Sending initial telegram alert because alert
+[watchdog.handleAlertsToTrigger] Sending initial discord alert because alert
 for endpoint=ALERT SELFTEST ... has been TRIGGERED
 ```
 
